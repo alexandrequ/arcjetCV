@@ -1,0 +1,26 @@
+Frame analysis
+
+    Camera Calibration - input multiple images of chessboard, return camera params
+    Image Normalization 
+        rescale to 255? 1?
+        smoothing/denoising
+        calibration
+        grayscale representation
+    
+    Finding ROI
+        use thresholding
+        find largest body location, bounding box, centerline
+    
+    Pose estimation
+        attach calibration checkerboard to arms
+        find pattern in frames
+    
+    Edge extraction algorithms - should use multiple techniques
+        Measure color/intensity gradients along centerline
+        Identify which gradient parameters are most effective
+        
+Video analysis
+    sting tracking
+    edge tracking
+    particle tracking 
+    
