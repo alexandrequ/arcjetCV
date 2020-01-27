@@ -68,12 +68,21 @@ def getCameraCalib(img_mask,pattern_shape,square_size=1.0,nthreads=4,folder='./c
     return camera_matrix, dist_coefs
 
 
-def getModelROI(fn,low=210,high=255,plot=True):
-    # Load an color image in grayscale
-    img = cv.imread(fn,0)
-    orig = cv.imread(fn,1)
-    ret,th1 = cv.threshold(img,low,high,cv.THRESH_BINARY)
 
+def getModelROI(orig,low=140,high=255,plot=False):
+    # Load an color image in grayscale
+    img = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
+    hist_full = cv.calcHist([img],[0],None,[256],[0,256])
+##    plt.plot(hist_full)
+##    plt.show()
+    
+    px,py = img.shape
+    total = np.sum(img)
+    avg = total/(px*py)
+    lowbar = max(avg*10,low)
+    lowbar = min(lowbar,252)
+    print(lowbar)
+    ret,th1 = cv.threshold(img,lowbar,high,cv.THRESH_BINARY)
     contours,hierarchy = cv.findContours(th1, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 
     if len(contours) != 0:
