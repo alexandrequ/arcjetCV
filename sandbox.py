@@ -3,8 +3,8 @@ import cv2
 import matplotlib.pyplot as plt
 
 # Load an color image in grayscale
-img = cv2.imread('sample3.jpeg',0)
-orig = cv2.imread('sample3.jpeg',1)
+img = cv2.imread('sample2.png',0)
+orig = cv2.imread('sample2.png',1)
 ret,th1 = cv2.threshold(img,210,255,cv2.THRESH_BINARY)
 
 contours,hierarchy = cv2.findContours(th1, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -23,10 +23,24 @@ if len(contours) != 0:
     #cv2.rectangle(img,(x-int(w/4),y-int(h/4)),(x+int(5*w/4),y+int(5*h/4)),(0,255,0),2)
     x1,y1 = (x-int(w/4),y-int(h/4))
     x2,y2 = (x+int(5*w/4),y+int(5*h/4))
-
+    mu = cv2.moments(c)
+    th = 0.5*np.arctan2(-2*mu['mu11'],mu['mu20']-mu['mu02'])
+    cx,cy = mu['m10']/mu['m00'],mu['m01']/mu['m00']
+    mean,eigenvectors,eigenvalues = cv2.PCACompute2(np.float32(c)[:,0,:],np.empty((0)))
+    cntr = (int(mean[0,0]), int(mean[0,1]))
+    angle = np.arctan2(eigenvectors[0,1], eigenvectors[0,0]) 
+    cv2.circle(img, cntr, 3, (255, 0, 255), 2)
+    p1 = (cntr[0] + 0.02 * eigenvectors[0,0] * eigenvalues[0,0], cntr[1] + 0.02 * eigenvectors[0,1] * eigenvalues[0,0])
+    p2 = (cntr[0] - 0.02 * eigenvectors[1,0] * eigenvalues[1,0], cntr[1] - 0.02 * eigenvectors[1,1] * eigenvalues[1,0])
+    plt.plot([cntr[0],p1[0]],[cntr[1],p1[1]],'r-')
+    plt.plot([cntr[0],p2[0]],[cntr[1],p2[1]],'b-')
+    flow = x+w/2. - cx 
+    print(flow)
 # show the images
-plt.figure(0)
 plt.imshow(img)
+plt.show()
+
+print(magnus)
 
 ##cv2.imshow('image',img)
 ##cv2.waitKey(0)
