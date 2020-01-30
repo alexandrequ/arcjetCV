@@ -36,14 +36,11 @@ def getOrientation(c):
     x,y,w,h = cv2.boundingRect(c)
     th = 0.5*np.arctan2(2*mu['mu11'],mu['mu20']-mu['mu02'])
     cx,cy = mu['m10']/mu['m00'],mu['m01']/mu['m00']
+    flowRight = x+w/2. - c[c[:,0,1].argmin(),0,0] <0
+    
+    return th,cx,cy,(x,y,w,h),flowRight
 
-    return th,cx,cy,(x,y,w,h)
-
-def getBlobs(fn):
-    # Read image
-    frame = cv.imread(fn, cv.IMREAD_GRAYSCALE)
-    im=cv.GaussianBlur(frame, (3, 3), 0)
-
+def getBlobDetector():
     # Set up the SimpleBlobdetector with default parameters.
     params = cv.SimpleBlobDetector_Params()
      
@@ -66,13 +63,18 @@ def getBlobs(fn):
     # Filter by Inertia
     params.filterByInertia =True
     params.minInertiaRatio = 0.5
-     
+
     detector = cv.SimpleBlobDetector_create(params)
+    return detector
+
+def getBlobGrid(fn,detector):
+    # Read image
+    frame = cv.imread(fn, cv.IMREAD_GRAYSCALE)
+    im=cv.GaussianBlur(frame, (3, 3), 0)
      
     # Detect blobs.
     keypoints = detector.detect(im)
      
-    # Draw detected blobs as red circles.
     # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
     im_with_keypoints = cv.drawKeypoints(im, keypoints, np.array([]), (0,0,255), cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
@@ -82,7 +84,8 @@ def getBlobs(fn):
     return im_with_keypoints, isFound, centers
 
 # Show keypoints
-im_with_keypoints, isFound, centers= getBlobs("2x9.png")
+detector = getBlobDetector()
+im_with_keypoints, isFound, centers= getBlobGrid("2x9.png",detector)
 print(isFound)
 plt.imshow(im_with_keypoints)
 plt.show()

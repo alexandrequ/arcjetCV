@@ -3,8 +3,8 @@ import cv2
 import matplotlib.pyplot as plt
 
 # Load an color image in grayscale
-img = cv2.imread('sample2.png',0)
-orig = cv2.imread('sample2.png',1)
+img = cv2.imread('sample.jpg',0)
+orig = cv2.imread('sample.jpg',1)
 ret,th1 = cv2.threshold(img,210,255,cv2.THRESH_BINARY)
 
 contours,hierarchy = cv2.findContours(th1, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -34,7 +34,7 @@ if len(contours) != 0:
     p2 = (cntr[0] - 0.02 * eigenvectors[1,0] * eigenvalues[1,0], cntr[1] - 0.02 * eigenvectors[1,1] * eigenvalues[1,0])
     plt.plot([cntr[0],p1[0]],[cntr[1],p1[1]],'r-')
     plt.plot([cntr[0],p2[0]],[cntr[1],p2[1]],'b-')
-    flow = x+w/2. - cx 
+    flow = x+w/2. - c[c[:,0,1].argmin(),0,0] <0
     print(flow)
 # show the images
 plt.imshow(img)
