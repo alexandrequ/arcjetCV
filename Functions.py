@@ -18,6 +18,27 @@ def findChessCorners(img,pattern_shape):
     else:
         return None
 
+def getContourAxes(contour):
+    sz = len(contour)
+    data_pts = np.empty((sz, 2), dtype=np.float64)
+    for i in range(data_pts.shape[0]):
+        data_pts[i,0] = contour[i,0,0]
+        data_pts[i,1] = contour[i,0,1]
+    # Perform PCA analysis
+    mean = np.empty((0))
+    mean, eigenvectors, eigenvalues = cv.PCACompute2(data_pts, mean)
+    angle = np.arctan2(eigenvectors[0,1], eigenvectors[0,0]) # orientation in radians
+    
+    return mean[0],eigenvectors, eigenvalues,angle
+
+def getOrientation(c):
+    mu = cv.moments(c)
+    x,y,w,h = cv2.boundingRect(c)
+    th = 0.5*np.arctan2(2*mu['mu11'],mu['mu20']-mu['mu02'])
+    cx,cy = mu['m10']/mu['m00'],mu['m01']/mu['m00']
+
+    return th,cx,cy,(x,y,w,h)
+
 def getBlobs(fn):
     # Read image
     frame = cv.imread(fn, cv.IMREAD_GRAYSCALE)
