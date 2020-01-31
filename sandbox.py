@@ -1,45 +1,19 @@
 import numpy as np
-import cv2
+import cv2 as cv
 import matplotlib.pyplot as plt
+from Frame import getModelROI
 
 # Load an color image in grayscale
-img = cv2.imread('sample.jpg',0)
-orig = cv2.imread('sample.jpg',1)
-ret,th1 = cv2.threshold(img,210,255,cv2.THRESH_BINARY)
+orig = cv.imread('sample5.png',1)
+hsv = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
 
-contours,hierarchy = cv2.findContours(th1, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+# get ROI
+(x,y,w,h), (th,cx,cy), flowRight, centerline = getModelROI(orig,low=50,high=200,plot=True)
+print(flowRight)
 
-if len(contours) != 0:
-    # draw in blue the contours that were found
-    
-
-    # find the biggest contour (c) by the area
-    c = max(contours, key = cv2.contourArea)
-    print(c)
-    cv2.drawContours(img, [c], -1, 255, 1)
-    x,y,w,h = cv2.boundingRect(c)
-
-    # draw the biggest contour (c) in green
-    #cv2.rectangle(img,(x-int(w/4),y-int(h/4)),(x+int(5*w/4),y+int(5*h/4)),(0,255,0),2)
-    x1,y1 = (x-int(w/4),y-int(h/4))
-    x2,y2 = (x+int(5*w/4),y+int(5*h/4))
-    mu = cv2.moments(c)
-    th = 0.5*np.arctan2(-2*mu['mu11'],mu['mu20']-mu['mu02'])
-    cx,cy = mu['m10']/mu['m00'],mu['m01']/mu['m00']
-    mean,eigenvectors,eigenvalues = cv2.PCACompute2(np.float32(c)[:,0,:],np.empty((0)))
-    cntr = (int(mean[0,0]), int(mean[0,1]))
-    angle = np.arctan2(eigenvectors[0,1], eigenvectors[0,0]) 
-    cv2.circle(img, cntr, 3, (255, 0, 255), 2)
-    p1 = (cntr[0] + 0.02 * eigenvectors[0,0] * eigenvalues[0,0], cntr[1] + 0.02 * eigenvectors[0,1] * eigenvalues[0,0])
-    p2 = (cntr[0] - 0.02 * eigenvectors[1,0] * eigenvalues[1,0], cntr[1] - 0.02 * eigenvectors[1,1] * eigenvalues[1,0])
-    plt.plot([cntr[0],p1[0]],[cntr[1],p1[1]],'r-')
-    plt.plot([cntr[0],p2[0]],[cntr[1],p2[1]],'b-')
-    flow = x+w/2. - c[c[:,0,1].argmin(),0,0] <0
-    print(flow)
 # show the images
-plt.imshow(img)
+plt.imshow(hsv)
 plt.show()
-
 print(magnus)
 
 ##cv2.imshow('image',img)

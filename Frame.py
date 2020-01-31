@@ -2,6 +2,7 @@ import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
 import os
+from Functions import getOrientation
 
 def normImage():
     return
@@ -72,15 +73,13 @@ def getCameraCalib(img_mask,pattern_shape,square_size=1.0,nthreads=4,folder='./c
 def getModelROI(orig,low=140,high=255,plot=False):
     # Load an color image in grayscale
     img = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
-    hist_full = cv.calcHist([img],[0],None,[256],[0,256])
-##    plt.plot(hist_full)
-##    plt.show()
+    hsv = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
     
     px,py = img.shape
     total = np.sum(img)
     avg = total/(px*py)
     lowbar = max(avg*10,low)
-    lowbar = min(lowbar,252)
+    lowbar = min(lowbar,high)
     print(lowbar)
     ret,th1 = cv.threshold(img,lowbar,high,cv.THRESH_BINARY)
     contours,hierarchy = cv.findContours(th1, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
@@ -88,16 +87,25 @@ def getModelROI(orig,low=140,high=255,plot=False):
     if len(contours) != 0:
         # find the biggest contour (c) by the area
         c = max(contours, key = cv.contourArea)
-        cv.drawContours(orig, [c], -1, 255, 1)
 
+        if cv.contourArea(c) < 300:
+            return None
+        
         ### Bounding box
-        x,y,w,h = cv.boundingRect(c)
-        x1,y1 = (x-int(w/4),y-int(h/4))
-        x2,y2 = (x+int(5*w/4),y+int(5*h/4))
-        cv.rectangle(orig,(x1,y1),(x2,y2),(255,255,255),1)
+        th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
 
         ### Centerline
-        centerline = orig[y+int(h/2),x1:x2,:]
+        if flowRight:        
+            centerline = hsv[int(cy)-5:int(cy)+5,x-w:int(cx),:].sum(axis=0)
+        else:
+            centerline = hsv[int(cy)-5:int(cy)+5,int(cx):x+int(2*w),:].sum(axis=0)
+            centerline = centerline[::-1]
+
+        ### Draw features
+        cv.rectangle(orig,(x,y,w,h),(0,0,255))
+        cv.circle(orig,(int(cx),int(cy)),4,(0,255,0))
+        cv.circle(orig,(x-w+96,int(cy)),4,(255,0,0))
+        cv.drawContours(orig, [c], -1, 255, 1)
         
         if plot:
             # show the images
@@ -105,7 +113,7 @@ def getModelROI(orig,low=140,high=255,plot=False):
             plt.subplot(1,2,1),plt.imshow(orig)
             plt.subplot(1,2,2),plt.plot(centerline)
             plt.show()
-        return x,y,w,h, centerline
+        return (x,y,w,h), (th,cx,cy), flowRight, centerline
     else:
         return None
     

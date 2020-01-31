@@ -33,7 +33,7 @@ def getContourAxes(contour):
 
 def getOrientation(c):
     mu = cv.moments(c)
-    x,y,w,h = cv2.boundingRect(c)
+    x,y,w,h = cv.boundingRect(c)
     th = 0.5*np.arctan2(2*mu['mu11'],mu['mu20']-mu['mu02'])
     cx,cy = mu['m10']/mu['m00'],mu['m01']/mu['m00']
     flowRight = x+w/2. - c[c[:,0,1].argmin(),0,0] <0
@@ -83,12 +83,16 @@ def getBlobGrid(fn,detector):
 
     return im_with_keypoints, isFound, centers
 
+def analyzeCenterline():
+    return
+
 # Show keypoints
-detector = getBlobDetector()
-im_with_keypoints, isFound, centers= getBlobGrid("2x9.png",detector)
-print(isFound)
-plt.imshow(im_with_keypoints)
-plt.show()
+if __name__ == "__main__":
+    detector = getBlobDetector()
+    im_with_keypoints, isFound, centers= getBlobGrid("2x9.png",detector)
+    print(isFound)
+    plt.imshow(im_with_keypoints)
+    plt.show()
     
 
 
