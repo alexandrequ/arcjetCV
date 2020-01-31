@@ -3,7 +3,7 @@ import cv2 as cv
 from Frame import getModelROI
 
 fname = "video/AHF335Run001_EastView_1.mp4"
-fname = "video/trim.mov"
+#fname = "video/trim.mov"
 cap = cv.VideoCapture(fname)
 counter=0
 while(True):
