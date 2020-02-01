@@ -2,7 +2,7 @@ import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
 import os
-from Functions import getOrientation
+from Functions import getOrientation,analyzeCenterlineHSV
 
 def normImage():
     return
@@ -68,55 +68,66 @@ def getCameraCalib(img_mask,pattern_shape,square_size=1.0,nthreads=4,folder='./c
     print("distortion coefficients: ", dist_coefs.ravel())
     return camera_matrix, dist_coefs
 
-
-
-def getModelROI(orig,low=140,high=255,plot=False):
-    # Load an color image in grayscale
-    img = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
-    hsv = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
+def getROIfromHSV(orig,plot=False,
+                minHSV=(80,0,120),maxHSV=(121,255,255),
+                stingMinHSV=(65,220,100),stingMaxHSV = (85,245,255)):
     
-    px,py = img.shape
-    total = np.sum(img)
-    avg = total/(px*py)
-    lowbar = max(avg*10,low)
-    lowbar = min(lowbar,high)
-    print(lowbar)
-    ret,th1 = cv.threshold(img,lowbar,high,cv.THRESH_BINARY)
-    contours,hierarchy = cv.findContours(th1, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    # Load an color image in HSV, apply HSV transform again
+    hsv_ = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
+    hsv_=cv.GaussianBlur(hsv_, (5, 5), 0)
+    hsv = cv.cvtColor(hsv_, cv.COLOR_RGB2HSV)
 
-    if len(contours) != 0:
+    ### Find model contours
+    maskHSV = cv.inRange(hsv, minHSV, maxHSV)
+    contours,hierarchy = cv.findContours(maskHSV, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+
+    ### Sting adaptor contours
+    stinghsv=cv.GaussianBlur(hsv, (15, 15), 0)
+    stingMaskHSV = cv.inRange(stinghsv, stingMinHSV, stingMaxHSV)
+    stingContours,stingHierarchy = cv.findContours(stingMaskHSV, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+
+    if len(contours) != 0 and len(stingContours) !=0:
         # find the biggest contour (c) by the area
         c = max(contours, key = cv.contourArea)
-
-        if cv.contourArea(c) < 300:
+        if cv.contourArea(c) < 3000:
+            return None
+        stingc = max(stingContours, key = cv.contourArea)
+        if cv.contourArea(c) < 3000:
             return None
         
         ### Bounding box
         th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
+        dx = int(w/4.)
+        xs,ys,ws,hs = cv.boundingRect(stingc)
 
-        ### Centerline
-        if flowRight:        
-            centerline = hsv[int(cy)-5:int(cy)+5,x-w:int(cx),:].sum(axis=0)
-        else:
-            centerline = hsv[int(cy)-5:int(cy)+5,int(cx):x+int(2*w),:].sum(axis=0)
-            centerline = centerline[::-1]
+        x1,x2 = min(x,xs),x+w
+        y1,y2 = min(y,ys),max(y+h,ys+hs)
 
+        ROI = (x1,y1,x2-x1,y2-y1)
+        boxes = ((x,y,w,h),(xs,ys,ws,hs))
+        contours = (c,stingc)
+        orientation = (th,cx,cy)
+        
         ### Draw features
         cv.rectangle(orig,(x,y,w,h),(0,0,255))
+        cv.rectangle(orig,(xs,ys,ws,hs),(0,255,255))
+        cv.rectangle(orig,ROI,(255,255,255))
         cv.circle(orig,(int(cx),int(cy)),4,(0,255,0))
-        cv.circle(orig,(x-w+96,int(cy)),4,(255,0,0))
         cv.drawContours(orig, [c], -1, 255, 1)
+        cv.drawContours(hsv_, stingContours, -1, (0,255,0), 1)
         
         if plot:
             # show the images
             plt.figure(0)
             plt.subplot(1,2,1),plt.imshow(orig)
-            plt.subplot(1,2,2),plt.plot(centerline)
+            plt.subplot(1,2,2),plt.imshow(hsv_)
             plt.show()
-        return (x,y,w,h), (th,cx,cy), flowRight, centerline
+        return ROI, boxes, orientation, flowRight
     else:
         return None
-    
+
+def getModelROI():
+    return
 
 
 def getPose():

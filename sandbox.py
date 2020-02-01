@@ -4,16 +4,32 @@ import matplotlib.pyplot as plt
 from Frame import getModelROI
 
 # Load an color image in grayscale
-orig = cv.imread('sample5.png',1)
-hsv = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
+orig = cv.imread('sample4.png',1)
 
 # get ROI
-(x,y,w,h), (th,cx,cy), flowRight, centerline = getModelROI(orig,low=50,high=200,plot=True)
+ROI, boxes, orientation, flowRight = getModelROI(orig,plot=True)
 print(flowRight)
 
-# show the images
-plt.imshow(hsv)
+### Centerline
+if flowRight:        
+    centerline = hsv[int(cy)-5:int(cy)+5,x-dx:int(cx),:].sum(axis=0)/10.
+else:
+    centerline = hsv[int(cy)-5:int(cy)+5,int(cx):x+w+dx,:].sum(axis=0)/10.
+    centerline = centerline[::-1]
+
+### edgemetric = V**2 + (256-S)**2 + (180-H)**2
+ind = analyzeCenterlineHSV(centerline)
+hsv *= mask
+H,S,V = hsv[y-dx:y+h+dx,x-dx:x+w+dx,0],hsv[y-dx:y+h+dx,x-dx:x+w+dx,1],hsv[y-dx:y+h+dx,x-dx:x+w+dx,2]
+edgemetric = (V**2 + (256-S)**2 + (180-H)**2)
+
+for i in range(0,len(edgemetric),10):
+    row = edgemetric[i,:]
+    plt.plot([i],[row.argmax()-1],'ro')
 plt.show()
+
+
+
 print(magnus)
 
 ##cv2.imshow('image',img)

@@ -83,8 +83,18 @@ def getBlobGrid(fn,detector):
 
     return im_with_keypoints, isFound, centers
 
-def analyzeCenterline():
-    return
+def analyzeCenterlineHSV(cl):
+    H,S,V = cl[:,0],cl[:,1],cl[:,2]
+    edgemetric = V**2 + (256-S)**2 + (180-H)**2
+    ind = edgemetric.argmax()-1
+    return ind
+
+def mask3(img,c):
+    ### Create mask
+    mask = np.zeros(img.shape,np.uint8)
+    cv.drawContours(mask,[c],0,1,-1)
+    mask[:,:,1],mask[:,:,2] = mask[:,:,0],mask[:,:,0]
+    return mask
 
 # Show keypoints
 if __name__ == "__main__":
