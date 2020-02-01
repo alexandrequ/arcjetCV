@@ -14,9 +14,9 @@ while(True):
         break
 
     # Our operations on the frame come here
-    ret = getModelROI(frame,low=140,high=255)
+    ret = getModelROI(frame)
     if ret != None:
-        x,y,w,h, centerline = ret
+        ROI, boxes, orientation, flowRight = ret
         
     # Display the resulting frame
 ##    cv.imwrite('frame%03d.png'%counter,frame)
