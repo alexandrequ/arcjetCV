@@ -9,16 +9,18 @@ Frame analysis
         histogram reshuffling
     
     Finding ROI
-        use thresholding
-        find largest body location, bounding box, centerline, orientation
+        find largest body location using thresholding, blobfinder
+        identify bounding box, centerline, orientation
     
     Pose estimation
         attach calibration checkerboard to arms
         find pattern in frames
     
     Edge extraction algorithms - should use multiple techniques
-        Measure color/intensity gradients along centerline
-        Identify which gradient parameters are most effective
+        Identify which gradient parameters are most effective (HSV-sq, grayscale)
+        find model contour, sting adapter contour
+        Get front edge from contours + ROI
+        Save edge data in useful file format
         
 Video analysis
     sting tracking

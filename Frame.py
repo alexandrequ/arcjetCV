@@ -2,7 +2,8 @@ import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
 import os
-from Functions import getOrientation,analyzeCenterlineHSV
+from Functions import getOrientation,classifyImageHist,getEdgesFromContours
+from Functions import contoursGRAY,contoursHSV,interpolateCorners,combineEdges
 
 def normImage():
     return
@@ -68,67 +69,52 @@ def getCameraCalib(img_mask,pattern_shape,square_size=1.0,nthreads=4,folder='./c
     print("distortion coefficients: ", dist_coefs.ravel())
     return camera_matrix, dist_coefs
 
-def getROIfromHSV(orig,plot=False,
-                minHSV=(80,0,120),maxHSV=(121,255,255),
-                stingMinHSV=(65,220,100),stingMaxHSV = (85,245,255)):
-    
-    # Load an color image in HSV, apply HSV transform again
-    hsv_ = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
-    hsv_=cv.GaussianBlur(hsv_, (5, 5), 0)
-    hsv = cv.cvtColor(hsv_, cv.COLOR_RGB2HSV)
+def getModelProps(orig,plot=True,draw=False,verbose=False,):
+    ### Classify image
+    gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
+    flags = classifyImageHist(gray)
+    if verbose:
+        print(flags)
 
-    ### Find model contours
-    maskHSV = cv.inRange(hsv, minHSV, maxHSV)
-    contours,hierarchy = cv.findContours(maskHSV, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-
-    ### Sting adaptor contours
-    stinghsv=cv.GaussianBlur(hsv, (15, 15), 0)
-    stingMaskHSV = cv.inRange(stinghsv, stingMinHSV, stingMaxHSV)
-    stingContours,stingHierarchy = cv.findContours(stingMaskHSV, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-
-    if len(contours) != 0 and len(stingContours) !=0:
-        # find the biggest contour (c) by the area
-        c = max(contours, key = cv.contourArea)
-        if cv.contourArea(c) < 3000:
-            return None
-        stingc = max(stingContours, key = cv.contourArea)
-        if cv.contourArea(c) < 3000:
-            return None
-        
-        ### Bounding box
-        th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
-        dx = int(w/4.)
-        xs,ys,ws,hs = cv.boundingRect(stingc)
-
-        x1,x2 = min(x,xs),x+w
-        y1,y2 = min(y,ys),max(y+h,ys+hs)
-
-        ROI = (x1,y1,x2-x1,y2-y1)
-        boxes = ((x,y,w,h),(xs,ys,ws,hs))
-        contours = (c,stingc)
-        orientation = (th,cx,cy)
-        
-        ### Draw features
-        cv.rectangle(orig,(x,y,w,h),(0,0,255))
-        cv.rectangle(orig,(xs,ys,ws,hs),(0,255,255))
-        cv.rectangle(orig,ROI,(255,255,255))
-        cv.circle(orig,(int(cx),int(cy)),4,(0,255,0))
-        cv.drawContours(orig, [c], -1, 255, 1)
-        cv.drawContours(hsv_, stingContours, -1, (0,255,0), 1)
-        
-        if plot:
-            # show the images
-            plt.figure(0)
-            plt.subplot(1,2,1),plt.imshow(orig)
-            plt.subplot(1,2,2),plt.imshow(hsv_)
-            plt.show()
-        return ROI, boxes, orientation, flowRight
-    else:
+    if flags['modelvis'] == False:
         return None
+    
+    if flags['stingvis']:
+        if flags['saturated']:
+            thresh = 248
+        else:
+            thresh = 230
+        try:
+            c,stingc = contoursGRAY(orig,thresh)
+            edges, ROI, orientation, flowRight = getEdgesFromContours(orig,c,stingc,draw=draw,plot=plot)
+        except TypeError:
+            return None
+    else:
+        ### HSV contours
+        try:
+            c,stingc = contoursHSV(orig,flags,plot=plot)
+            edges, ROI, orientation, flowRight = getEdgesFromContours(orig,c,stingc,draw=draw,plot=plot)
 
-def getModelROI():
-    return
+            diff_top = edges[1][0,0,:]- edges[0][0,0,:]
+            diff_bottom = edges[1][-1,0,:]- edges[0][-1,0,:]
+            if len(c) < 50 or (len(c)==len(stingc) and (c==stingc).all()):
+                print('using stingc only')
+            elif flags['saturated']:
+                pass
+            else:
+                try:
+                    if abs(diff_top[0]) > 20 or abs(diff_bottom[0]) > 20:
+                        cn = combineEdges(edges[0],edges[1],flowRight)
+                        edges = (cn,stingc)
+                    else:
+                        cn = interpolateCorners(edges[0],edges[1],flowRight)
+                        edges = (cn,stingc)
+                except:
+                    print('Corner correction failed')
+        except TypeError:
+            return None
 
+    return edges, ROI, orientation, flowRight
 
 def getPose():
     return

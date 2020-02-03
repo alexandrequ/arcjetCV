@@ -1,32 +1,89 @@
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
-from Frame import getModelROI
+from scipy.interpolate import interp1d
+from Frame import getModelProps
+from Functions import combineEdges
 
-# Load an color image in grayscale
 orig = cv.imread('sample4.png',1)
+##hsv_ = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
+##hsv_=cv.GaussianBlur(hsv_, (5, 5), 0)
+##hsv = cv.cvtColor(hsv_, cv.COLOR_RGB2HSV)
+
+##hsv_ = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
+##print(np.shape(orig),np.shape(hsv_))
+##plt.figure(0)
+##plt.imshow(hsv_)
+##plt.figure(1)
+##plt.imshow(orig)
+##plt.show()
+
+img = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
+histr = cv.calcHist( [img], None, None, [256], (0, 256));
+imgsize = img.size
+##sv= histr[50:100].sum()/imgsize
+##print("Sting visible",sv,sv>.05)
+##print("overexposed", histr[250:].sum()/imgsize > 0.005)
+##print("underexposed", histr[150:].sum()/imgsize < 0.005)
+##print("saturated",histr[254:].sum()/imgsize > 0.005)
+plt.figure(1)
+plt.plot(histr/imgsize,'b-')
+plt.xlim([0,256])
+plt.ylim([0,.005])
+##
+##plt.figure(0)
+##rgb = orig[...,::-1].copy()
+##plt.subplot(1,2,1),plt.imshow(rgb)
+##plt.subplot(1,2,2),plt.imshow(img)
+##plt.show()
 
 # get ROI
-ROI, boxes, orientation, flowRight = getModelROI(orig,plot=True)
+##try:
+(c,stingc), ROI, orientation, flowRight = getModelProps(orig,plot=False)
 print(flowRight)
+    
+cv.drawContours(orig, c, -1, (0,255,255), 1)
 
-### Centerline
-if flowRight:        
-    centerline = hsv[int(cy)-5:int(cy)+5,x-dx:int(cx),:].sum(axis=0)/10.
-else:
-    centerline = hsv[int(cy)-5:int(cy)+5,int(cx):x+w+dx,:].sum(axis=0)/10.
-    centerline = centerline[::-1]
+##### Bottom corner
+##if abs(diff_top[0]) > 20:
+##    pc = c[20,:,:]
+##    ind = np.where(stingc[:,0,0] == pc[0,0])[0][0]
+##    mt=stingc[:ind+1,0,:]
+##    
+##    ### linear offset correction
+##    delta = stingc[ind,:,:] - pc
+##    s = np.linspace(0,1,ind+1)
+##    ds = (delta*s[:, np.newaxis]).astype(np.int32)
+##    mt -= ds
+##else:
+##    mt = splineFit()
 
-### edgemetric = V**2 + (256-S)**2 + (180-H)**2
-ind = analyzeCenterlineHSV(centerline)
-hsv *= mask
-H,S,V = hsv[y-dx:y+h+dx,x-dx:x+w+dx,0],hsv[y-dx:y+h+dx,x-dx:x+w+dx,1],hsv[y-dx:y+h+dx,x-dx:x+w+dx,2]
-edgemetric = (V**2 + (256-S)**2 + (180-H)**2)
-
-for i in range(0,len(edgemetric),10):
-    row = edgemetric[i,:]
-    plt.plot([i],[row.argmax()-1],'ro')
+plt.figure(0)
+rgb = orig[...,::-1].copy()
+plt.subplot(1,1,1),plt.imshow(rgb)
 plt.show()
+
+
+##except TypeError:
+##    print("ROI not found... :(")
+
+##### Centerline
+##if flowRight:        
+##    centerline = hsv[int(cy)-5:int(cy)+5,x-dx:int(cx),:].sum(axis=0)/10.
+##else:
+##    centerline = hsv[int(cy)-5:int(cy)+5,int(cx):x+w+dx,:].sum(axis=0)/10.
+##    centerline = centerline[::-1]
+##
+##### edgemetric = V**2 + (256-S)**2 + (180-H)**2
+##ind = analyzeCenterlineHSV(centerline)
+##hsv *= mask
+##H,S,V = hsv[y-dx:y+h+dx,x-dx:x+w+dx,0],hsv[y-dx:y+h+dx,x-dx:x+w+dx,1],hsv[y-dx:y+h+dx,x-dx:x+w+dx,2]
+##edgemetric = (V**2 + (256-S)**2 + (180-H)**2)
+##
+##for i in range(0,len(edgemetric),10):
+##    row = edgemetric[i,:]
+##    plt.plot([i],[row.argmax()-1],'ro')
+##plt.show()
 
 
 
@@ -90,41 +147,3 @@ for i in range(4):
     plt.title(titles[i])
     plt.xticks([]),plt.yticks([])
 plt.show()
-
-
-##def find_blobs(img):
-##    # Setup SimpleBlobDetector parameters.
-##    params = cv2.SimpleBlobDetector_Params()
-##     
-##    # Change thresholds
-##    params.minThreshold = 100;
-##    params.maxThreshold = 5000;
-##     
-##    # Filter by Area.
-##    params.filterByArea = True
-##    params.minArea = 200
-##     
-##    # Filter by Circularity
-##    params.filterByCircularity = False
-##    params.minCircularity = 0.785
-##     
-##    # Filter by Convexity
-##    params.filterByConvexity = False
-##    params.minConvexity = 0.87
-##     
-##    # Filter by Inertia
-##    #params.filterByInertia = True
-##    #params.minInertiaRatio = 0.01
-##
-##    # Set up the detector with default parameters.
-##    detector = cv2.SimpleBlobDetector(params)
-##     
-##    # Detect blobs.
-##    keypoints = detector.detect(img)
-##    print keypoints
-##      
-##    # Draw detected blobs as red circles.
-##    # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
-##    im_with_keypoints = cv2.drawKeypoints(img, keypoints, np.array([]),
-##            (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-##    cv2.imwrite("blobs.jpg", im_with_keypoints); 
