@@ -11,7 +11,7 @@ fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 cap = cv.VideoCapture(folder+fname)
 ret, frame = cap.read(); h,w,c = np.shape(frame)
 
-vid_cod = cv.VideoWriter_fourcc('M','J','P','G')
+vid_cod = cv.VideoWriter_fourcc('m','p','4','v')
 output = cv.VideoWriter(folder+"edit_"+fname, vid_cod, 60.0,(w,h))
 
 nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
