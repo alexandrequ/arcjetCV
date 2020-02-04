@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 folder = "video/"
 fname = "AHF335Run001_EastView_1.mp4"
 fname = "IHF360-005_EastView_3_HighSpeed.mp4"
-fname = "IHF360-003_EastView_3_HighSpeed.mp4"
+#fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 cap = cv.VideoCapture(folder+fname)
 ret, frame = cap.read(); h,w,c = np.shape(frame)
 
@@ -16,7 +16,7 @@ output = cv.VideoWriter(folder+"edit_"+fname, vid_cod, 60.0,(w,h))
 
 nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
 fps = cap.get(cv.CAP_PROP_FPS)
-cap.set(cv.CAP_PROP_POS_FRAMES,361);
+cap.set(cv.CAP_PROP_POS_FRAMES,0);
 counter=0
 myc=[]
 while(True):
@@ -66,6 +66,6 @@ output.release()
 cv.destroyAllWindows()
 
 import pickle
-fout = open(fname[0:-4] +'_edges.pkl','wb')
+fout = open(folder+fname[0:-4] +'_edges.pkl','wb')
 pickle.dump(myc,fout)
 fout.close()
