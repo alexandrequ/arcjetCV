@@ -3,7 +3,8 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 import os
 from Functions import getOrientation,classifyImageHist,getEdgesFromContours
-from Functions import contoursGRAY,contoursHSV,interpolateCorners,combineEdges
+from Functions import contoursGRAY,contoursHSV,combineEdges
+from Functions import getConvexHull
 
 def normImage():
     return
@@ -69,7 +70,7 @@ def getCameraCalib(img_mask,pattern_shape,square_size=1.0,nthreads=4,folder='./c
     print("distortion coefficients: ", dist_coefs.ravel())
     return camera_matrix, dist_coefs
 
-def getModelProps(orig,plot=True,draw=False,verbose=False,):
+def getModelProps(orig,plot=False,draw=False,verbose=False,):
     ### Classify image
     gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
     flags = classifyImageHist(gray)
@@ -81,40 +82,42 @@ def getModelProps(orig,plot=True,draw=False,verbose=False,):
     
     if flags['stingvis']:
         if flags['saturated']:
-            thresh = 248
+            thresh = 252
         else:
             thresh = 230
         try:
             c,stingc = contoursGRAY(orig,thresh)
-            edges, ROI, orientation, flowRight = getEdgesFromContours(orig,c,stingc,draw=draw,plot=plot)
+            edges, ROI, orientation, flowRight = getEdgesFromContours(orig,c,stingc,flags,draw=draw,plot=plot)
         except TypeError:
             return None
     else:
+        
         ### HSV contours
         try:
-            c,stingc = contoursHSV(orig,flags,plot=plot)
-            edges, ROI, orientation, flowRight = getEdgesFromContours(orig,c,stingc,draw=draw,plot=plot)
+            c,stingc = contoursHSV(orig,flags,plot=plot,draw=True)
+            if flags['underexp']:
+                print('hull executed')
+                c = getConvexHull(c,1000)
+            stingc = getConvexHull(stingc,10000)
+            edges, ROI, orientation, flowRight = getEdgesFromContours(orig,c,stingc,flags,draw=draw,plot=plot)
 
             diff_top = edges[1][0,0,:]- edges[0][0,0,:]
             diff_bottom = edges[1][-1,0,:]- edges[0][-1,0,:]
             if len(c) < 50 or (len(c)==len(stingc) and (c==stingc).all()):
-                print('using stingc only')
+                print(len(c),'using stingc only')
+                
             elif flags['saturated']:
                 pass
             else:
                 try:
-                    if abs(diff_top[0]) > 20 or abs(diff_bottom[0]) > 20:
-                        cn = combineEdges(edges[0],edges[1],flowRight)
-                        edges = (cn,stingc)
-                    else:
-                        cn = interpolateCorners(edges[0],edges[1],flowRight)
-                        edges = (cn,stingc)
+                    cn = combineEdges(edges[0],edges[1],flowRight)
+                    edges = (cn,stingc)
                 except:
                     print('Corner correction failed')
         except TypeError:
             return None
 
-    return edges, ROI, orientation, flowRight
+    return edges, ROI, orientation, flowRight,flags
 
 def getPose():
     return

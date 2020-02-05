@@ -2,7 +2,7 @@ import os,sys
 import numpy as np
 import cv2 as cv
 from glob import glob
-from scipy.interpolate import interp1d
+from scipy.interpolate import splev, splprep,interp1d
 import matplotlib.pyplot as plt
 
 def splitfn(fn):
@@ -19,6 +19,35 @@ def findChessCorners(img,pattern_shape):
     else:
         return None
 
+def interpolateContour(contour,ninterp):
+    x,y= contour[:,0,0],contour[:,0,1]
+    # identify duplicate points
+    okay = np.where(np.abs(np.diff(x)) + np.abs(np.diff(y)) > 0)
+    xp,yp = x[okay],y[okay]
+
+    # find normalized length parameterization
+    dl = np.sqrt(np.diff(xp)**2 + np.diff(yp)**2)
+    lp = np.append(np.array([0.]),np.cumsum(dl))
+    lp /= lp[-1]
+
+    # interpolate using length
+    fx = interp1d(lp, xp, kind='linear')
+    fy = interp1d(lp, yp, kind='linear')
+    ln = np.linspace(0,1,ninterp)
+    xi,yi = fx(ln),fy(ln)
+
+    output = np.zeros((ninterp,1,2))
+    output[:,0,0],output[:,0,1] = xi,yi
+
+    return output
+    
+def getConvexHull(contour,ninterp):
+    c= cv.convexHull(contour,clockwise=True)
+    c = interpolateContour(c,ninterp)
+    c = np.append(c[-1:,:,:],c,axis=0)
+    
+    return c.astype(np.int32)
+
 def getContourAxes(contour):
     sz = len(contour)
     data_pts = np.empty((sz, 2), dtype=np.float64)
@@ -33,6 +62,7 @@ def getContourAxes(contour):
     return mean[0],eigenvectors, eigenvalues,angle
 
 def getOrientation(c):
+    #print(np.shape(c))
     mu = cv.moments(c)
     x,y,w,h = cv.boundingRect(c)
     th = 0.5*np.arctan2(2*mu['mu11'],mu['mu20']-mu['mu02'])
@@ -191,7 +221,7 @@ def contoursHSV(orig,flags,draw=False,plot=False,
 
     return c,stingc
 
-def getEdgesFromContours(orig,c,stingc,draw=False,plot=False):
+def getEdgesFromContours(orig,c,stingc,flags,draw=False,plot=False):
     ### Bounding box
     th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
     dx = int(w/4.)
@@ -238,12 +268,13 @@ def getFrontEdgeFromContour(c,flowRight):
     #print(np.shape(frontedge))
     return frontedge
 
-def combineEdges(c,stingc,flowRight,cutoff=20):
+def combineEdges(c,stingc,flowRight,cutoff=50):
     ### top corner
     pc = c[cutoff,:,:]
-##    print(pc,np.where(stingc[:,0,0] == pc[0,0]))
-##    print(c[:20,0,0],stingc[:20,0,0])
+    #print(pc,np.where(stingc[:,0,0] == pc[0,0]))
+    #print(c[:20,0,0],stingc[:20,0,0])
     ind = np.where(stingc[:,0,0] == pc[0,0])[0][0]
+    #print(stingc[ind,0,:])
     mt=stingc[:ind+1,0,:]
     
     #linear offset correction
@@ -263,53 +294,10 @@ def combineEdges(c,stingc,flowRight,cutoff=20):
     ds = (delta*s[:, np.newaxis]).astype(np.int32)
     mb -= ds
 
+    #print(len(mt),len(mb))
     cn = np.append(mt[:,np.newaxis,:],c[cutoff:-cutoff,:,:],axis=0)
     cn = np.append(cn,mb[:,np.newaxis,:],axis=0)
 
-    # clip bad corners
-    if flowRight:
-        start= cn[0:50,0,0].argmax()
-        end = cn[-50:,0,0].argmax() + len(c)-50 + 1
-    else:
-        start= cn[0:50,0,0].argmin()
-        end = cn[-50:,0,0].argmin() + len(c)-50 + 1
-    cn = cn[start:end,:,:]
-    return cn
-
-def interpolateCorners(c,stingc,flowRight,npx=5,kind='quadratic'):
-    ### top corner
-    pts = np.append(stingc[0:npx,0,:], c[0:npx,0,:],axis=0)
-    pts = pts[pts[:,0].argsort()]
-    ft = interp1d(pts[:,0], pts[:,1], kind=kind)
-    if flowRight:
-        x = np.arange(stingc[0,0,0],c[0,0,0],-1)
-    else:
-        x = np.arange(stingc[0,0,0],c[0,0,0])
-    y = ft(x).astype(np.int32)
-    ct = np.hstack((x[:,np.newaxis], y[:,np.newaxis]))
-
-    ### bottom corner
-    pts = np.append(stingc[-npx:,0,:], c[-npx:,0,:],axis=0)
-    pts = pts[pts[:,0].argsort()]
-    fb = interp1d(pts[:,0], pts[:,1], kind=kind)
-    if flowRight:
-        x = np.arange(stingc[-1,0,0],c[-1,0,0],-1)
-    else:
-        x = np.arange(stingc[-1,0,0],c[-1,0,0])  
-    cb = np.hstack((x[:,np.newaxis], fb(x).astype(np.int32)[:,np.newaxis]))
-    
-    cn = np.append(ct[:,np.newaxis,:],c,axis=0)
-    cn = np.append(cn,cb[:,np.newaxis,:],axis=0)
-
-    # clip bad corners
-    if flowRight:
-        start= cn[0:50,0,0].argmax()
-        end = cn[-50:,0,0].argmax() + len(c)-50 + 1
-    else:
-        start= cn[0:50,0,0].argmin()
-        end = cn[-50:,0,0].argmin() + len(c)-50 + 1
-    cn = cn[start:end,:,:]
-    
     return cn
 
 def smooth(x,window_len=11,window='hanning'):
