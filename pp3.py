@@ -8,13 +8,14 @@ from scipy.interpolate import splev, splprep, interp1d
 folder = "video/"
 fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 
-folder= "video/"
-fname = "IHF360-005_EastView_3_HighSpeed.mp4"
+##folder= "video/"
+##fname = "IHF360-005_EastView_3_HighSpeed.mp4"
 
 dfx = np.loadtxt(folder+fname[0:-4]+"_X.csv",delimiter=',')
 dfy = np.loadtxt(folder+fname[0:-4]+"_Y.csv",delimiter=',')
 
 time = dfx[:,0]
+okay = np.where(time != 0)
 cx = dfx[:,1:]
 cy = dfy[:,1:]
 clen = []
@@ -41,27 +42,26 @@ clen = []
 ##plt.plot(time,cx[:,25],'r--')
 ##plt.plot(time,cx[:,50],'g--')
 ##plt.plot(time,cx[:,100],'b--')
-pxpi = 212
+pxpi = 214
 inds = [25,50,100]
 labels = ['75% radius','50% radius','Apex']
 
-out = np.zeros((3401,6))
+out = np.zeros((2312,6))
 for i in range(0,len(inds)):
-    okay = np.where(time != 0)
+    
     j,label = inds[i],labels[i]
     x = cx[okay,j]
-    x[0,1120+210:] = x[0,1120+210:]-3
-    a,b = ( (time[okay]-361)/240)[210:-35],(x[0,210:-35]-x[0,210])/pxpi
+    a,b = ( (time[okay]-time[okay][0])/240)[150:-35],(x[0,150:-35]-x[0,150])/pxpi
 
     b=smooth(b,window_len=48)
-    #plt.plot(b,'-',label=label)
+##    plt.plot(x[0,:],'-',label=label)
     plt.fill_between(a,-b-1/pxpi,-b+1/pxpi,alpha=0.5,label=label)
     out[:,2*i] = a
     out[:,2*i+1]=b
     
 plt.legend(loc=0)
 plt.title(fname[0:-4].replace('_',' '))
-plt.xlim([0,a.max()])
+#plt.xlim([0,a.max()])
 plt.ylabel('Recession (in)')
 plt.xlabel('Insertion Time (s)')
 plt.show()
