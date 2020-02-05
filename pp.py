@@ -23,20 +23,26 @@ y75 = (cy[35,-1])*.75
 y50 = (cy[35,-1])*.5
 y00 = 0
 
-c = np.zeros((200,1,2),dtype=np.int32)
-for row in range(35,2000,10):
-    c[:,0,0],c[:,0,1] = cy[row,:],cx[row,:]
-    hull = cv.convexHull(c)
-    y,x = hull[:,0,0],hull[:,0,1]
-    plt.plot(x,y,'-')
-    dl = np.sqrt(np.diff(cy[row,:])**2 + np.diff(cx[row,:])**2)
-    arclen = dl.sum()
-    print(time[row], cx[row,:].max())
-    clen.append(arclen)
-plt.show()
+x75,x50,x00 = [],[],[]
 
-plt.plot(clen)
-##plt.plot(time,cx[:,250],'r-')
-##plt.plot(time,cx[:,500],'g-')
-##plt.plot(time,cx[:,750],'b-')
+for row in range(0,len(cy)):
+    i75 = np.where(cy[row,:]>y75)[0][0]
+    x75.append(cx[row,i75])
+
+    i50 = np.where(cy[row,:]>y50)[0][0]
+    x50.append(cx[row,i50])
+
+    x00.append(cx[row,:].max())
+
+plt.plot(time,x75,'r-')
+plt.plot(time,x50,'g-')
+#plt.plot(time,x00,'b-')
+
+plt.plot(time,cx[:,125],'r--')
+plt.plot(time,cx[:,250],'g--')
+plt.plot(time,cx[:,500],'b--')
+
+##plt.plot(time,smooth(cx[:,125],window_len=48),'r-')
+##plt.plot(time,smooth(cx[:,126],window_len=48),'g-')
+##plt.plot(time,smooth(cx[:,500],window_len=48),'b-')
 plt.show()
