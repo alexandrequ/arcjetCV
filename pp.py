@@ -14,7 +14,7 @@ fname = "IHF360-005_EastView_3_HighSpeed.mp4"
 dfx = np.loadtxt(folder+fname[0:-4]+"_X.csv",delimiter=',')
 dfy = np.loadtxt(folder+fname[0:-4]+"_Y.csv",delimiter=',')
 
-time = dfx[:,0]
+time = dfx[:,0]-dfx[0,0]
 cx = dfx[:,1:]
 cy = dfy[:,1:]
 clen = []
@@ -45,13 +45,13 @@ pxpi = 212
 inds = [25,50,100]
 labels = ['75% radius','50% radius','Apex']
 
-out = np.zeros((3401,6))
+out = np.zeros((7047,6))
 for i in range(0,len(inds)):
     okay = np.where(time != 0)
     j,label = inds[i],labels[i]
     x = cx[okay,j]
-    x[0,1120+210:] = x[0,1120+210:]-3
-    a,b = ( (time[okay]-361)/240)[210:-35],(x[0,210:-35]-x[0,210])/pxpi
+    x[0,2449+210:] = x[0,2449+210:]-3
+    a,b = ( (time[okay])/240)[210:-35],(x[0,210:-35]-x[0,210])/pxpi
 
     b=smooth(b,window_len=48)
     #plt.plot(b,'-',label=label)
@@ -61,9 +61,10 @@ for i in range(0,len(inds)):
     
 plt.legend(loc=0)
 plt.title(fname[0:-4].replace('_',' '))
-plt.xlim([0,a.max()])
+##plt.xlim([0,a.max()])
 plt.ylabel('Recession (in)')
 plt.xlabel('Insertion Time (s)')
+plt.grid(True)
 plt.show()
 
 np.savetxt(fname[0:-4]+'_recess.csv',out, delimiter=',')
