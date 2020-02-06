@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 folder = "video/"
 fname = "AHF335Run001_EastView_1.mp4"
 fname = "IHF360-005_EastView_3_HighSpeed.mp4"
-fname = "IHF360-003_EastView_3_HighSpeed.mp4"
+#fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 cap = cv.VideoCapture(folder+fname)
 ret, frame = cap.read(); h,w,c = np.shape(frame)
 WRITE_VIDEO = False
-WRITE_PICKLE = True
-SHOW_CV = False
-SHOW_MATPLOTLIB = False
+WRITE_PICKLE = False
+SHOW_CV = True
+SHOW_MATPLOTLIB = True
 FIRST_FRAME =0
 
 if WRITE_VIDEO:
@@ -32,8 +32,8 @@ while(True):
         break
     
     counter +=1
-    if counter%10==0:
-        print(counter)
+##    if counter%10==0:
+##        print(counter)
     
     # Operations on the frame
     if SHOW_CV:
@@ -41,12 +41,12 @@ while(True):
     else:
         draw = True
         
-    ret = getModelProps(frame,draw=draw)
+    ret = getModelProps(frame,counter,draw=draw,annotate=True)
     if ret != None:
         (c,stingc), ROI, orientation, flowRight,flags = ret
         box = cv.boundingRect(c)
-        cv.rectangle(frame,box,(255,255,255),3)
-        cv.drawContours(frame, c, -1, (0,255,255), 3)
+        cv.rectangle(frame,box,(255,255,255),2)
+        cv.drawContours(frame, c, -1, (0,255,255), 2)
         myc.append([c,flags,counter])
     if WRITE_VIDEO:
         output.write(frame)

@@ -2,11 +2,11 @@ import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-from Frame import getModelProps,annotateImage
+from Frame import getModelProps
 from Functions import *
 
-fname = 'sample.jpg'
-orig = cv.imread(fname,1)
+orig = cv.imread('sample.jpg',1)
+
 ##img = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
 ##histr = cv.calcHist( [img], None, None, [256], (0, 256));
 ##imgsize = img.size
@@ -17,12 +17,12 @@ orig = cv.imread(fname,1)
 
 # get ROI
 ##try:
-(c,stingc), ROI, orientation, flowRight,flags = getModelProps(orig,fname,plot=True,annotate=True)
+##(c,stingc), ROI, orientation, flowRight,flags = getModelProps(orig,plot=True)
 ##print(flowRight)
 
 gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
 flags = classifyImageHist(gray)
-c,stingc = contoursHSV(orig,plot=True,draw=False,
+c,stingc = contoursHSV(orig,flags,plot=True,draw=False,
                        minHSV=(90,0,100),maxHSV=(128,255,255),
                        stingMinHSV=(62,200,40),stingMaxHSV=(110,250,255))
 
