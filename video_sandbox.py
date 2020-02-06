@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 folder = "video/"
 fname = "AHF335Run001_EastView_1.mp4"
 fname = "IHF360-005_EastView_3_HighSpeed.mp4"
-fname = "IHF360-003_EastView_3_HighSpeed.mp4"
+#fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 cap = cv.VideoCapture(folder+fname)
 ret, frame = cap.read(); h,w,c = np.shape(frame)
-WRITE_VIDEO = True
+WRITE_VIDEO = False
 WRITE_PICKLE = False
 SHOW_CV = True
 SHOW_MATPLOTLIB = False
@@ -24,7 +24,7 @@ nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
 fps = cap.get(cv.CAP_PROP_FPS)
 cap.set(cv.CAP_PROP_POS_FRAMES,FIRST_FRAME);
 counter=0
-myc=[]
+myc,xpts=[],[]
 while(True):
     # Capture frame-by-frame
     ret, frame = cap.read()
@@ -32,8 +32,8 @@ while(True):
         break
     
     counter +=1
-    if counter%10==0:
-        print(counter)
+##    if counter%10==0:
+##        print(counter)
     
     # Operations on the frame
     if SHOW_CV:
@@ -41,7 +41,7 @@ while(True):
     else:
         draw = True
         
-    ret = getModelProps(frame,draw=draw)
+    ret = getModelProps(frame,counter,draw=draw)
     if ret != None:
         (c,stingc), ROI, orientation, flowRight,flags = ret
         box = cv.boundingRect(c)
@@ -66,6 +66,7 @@ while(True):
 
         ind = np.sqrt(c[:,0,0]**2 + c[:,0,1]**2).argmin()
         print(c[ind,0,0],c[ind,0,1])
+        xpts.append(c[ind,0,0])
         cv.circle(frame, (c[ind,0,0],c[ind,0,1]), 5, (255,0,255), 2)
         cv.imshow('img2',frame)
         if cv.waitKey(1) & 0xFF == ord('q'):
@@ -94,6 +95,8 @@ if WRITE_VIDEO:
     output.release()
 cv.destroyAllWindows()
 
+plt.plot(xpts)
+plt.show()
 if WRITE_PICKLE:
     import pickle
     fout = open(folder+fname[0:-4] +'_edges.pkl','wb')

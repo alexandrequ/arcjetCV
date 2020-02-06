@@ -1,128 +1,117 @@
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
-import os
 from Functions import getOrientation,classifyImageHist,getEdgesFromContours
 from Functions import contoursGRAY,contoursHSV,combineEdges
 from Functions import getConvexHull
 
-def normImage():
-    return
-
-def getCameraCalib(img_mask,pattern_shape,square_size=1.0,nthreads=4,folder='./calib/'):
-    ### Retrieve filenames from img_mask (i.e. "./camera/frame??.jpg")
-    from glob import glob
-    from Functions import findChessCorners,splitfn
-
-    img_names = glob(img_mask)
-    
-    ### Generate 3D (x,y,z) obj points associated with pattern, assuming z=0
-    pattern_points = np.zeros((np.prod(pattern_shape), 3), np.float32)
-    pattern_points[:, :2] = np.indices(pattern_shape).T.reshape(-1, 2)
-    pattern_points *= square_size
-
-    ### Create arrays to store img and obj points, check image size
-    obj_points = []
-    img_points = []
-    h, w = cv.imread(img_names[0], cv.IMREAD_GRAYSCALE).shape[:2]
-
-    ### wrapper with single arg- needed for multiproc
-    def g(fn): 
-        img = cv.imread(fn, 0)
-        if img is None:
-            print("Failed to load", fn)
-            return None
-        hi, wi = img.shape[:2]
-        assert hi==h and wi==w,("%s has different shape: %d x %d ... " % (fn,hi,wi))
-        corners= findChessCorners(img, pattern_shape)
+class Logger(object):
+    def __init__(self,filename,prefix=''):
+        self.filename=filename
+        self.prefix = prefix
+        self.print = True
+        self.fileio = False
         
-        ### Output imgs with annotated corners
-        if folder and not os.path.isdir(folder):
-            os.mkdir(folder)
-        vis = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
-        cv.drawChessboardCorners(vis, pattern_shape, corners, True)
-        _path, name, _ext = splitfn(fn)
-        outfile = os.path.join(folder, name + '_chess.png')
-        cv.imwrite(outfile, vis)
-        
-        return corners
+    def write(self,line):
+        if self.print:
+            print(self.prefix+line.__str__())
+        if self.fileio:
+            fh = open(self.filename,'a')
+            fh.write(self.prefix+line.__str__()+'\n')
+            fh.close()
 
-    ### Multiprocessing for speed
-    if nthreads <= 1:
-        chessboards = [g(fn) for fn in img_names]
-    else:
-        print("Run with %d threads..." % nthreads)
-        from multiprocessing.dummy import Pool as ThreadPool
-        pool = ThreadPool(nthreads)
-        chessboards = pool.map(g, img_names)
+def getModelProps(orig,frameID,log=None,plot=False,draw=True,verbose=False,annotate=False):
+    ### Initialize logfile
+    if log is None:
+        log = Logger('getModelProps.log')
+    log.prefix = "%s: "%str(frameID)
 
-    ### Only keep frames with recognized pattern
-    chessboards = [x for x in chessboards if x is not None]
-    for corners in chessboards:
-        img_points.append(corners)
-        obj_points.append(pattern_points)
-
-    # calculate camera distortion
-    rms, camera_matrix, dist_coefs, _rvecs, _tvecs = cv.calibrateCamera(obj_points, img_points, (w, h), None, None)
-
-    print("\nRMS:", rms)
-    print("camera matrix:\n", camera_matrix)
-    print("distortion coefficients: ", dist_coefs.ravel())
-    return camera_matrix, dist_coefs
-
-def getModelProps(orig,plot=False,draw=False,verbose=False,):
     ### Classify image
     gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
     flags = classifyImageHist(gray)
     if verbose:
-        print(flags)
+        log.write(flags)
 
     if flags['modelvis'] == False:
         return None
     
     if flags['stingvis']:
+        log.write('sting visible')
         if flags['saturated']:
+            log.write('saturated')
             thresh = 252
         else:
             thresh = 230
         try:
-            c,stingc = contoursGRAY(orig,thresh)
-            edges, ROI, orientation, flowRight = getEdgesFromContours(orig,c,stingc,flags,draw=draw,plot=plot)
-        except TypeError:
+            c,stingc = contoursGRAY(orig,thresh,log=log)
+            ret = getEdgesFromContours(orig,c,stingc,flags,
+                                       draw=draw,plot=False)
+            edges, ROI, orientation, flowRight = ret
+        except:
+            log.write('failed GRAY edge detection')
             return None
     else:
-        
         ### HSV contours
         try:
-            c,stingc = contoursHSV(orig,flags,plot=plot,draw=True)
+            c,stingc = contoursHSV(orig,plot=False,draw=draw,log=log)
             if flags['underexp']:
-                print('hull executed')
+                log.write('underexposed, imposed convex hull')
                 c = getConvexHull(c,1000)
             stingc = getConvexHull(stingc,10000)
-            edges, ROI, orientation, flowRight = getEdgesFromContours(orig,c,stingc,flags,draw=draw,plot=plot)
-
-            diff_top = edges[1][0,0,:]- edges[0][0,0,:]
-            diff_bottom = edges[1][-1,0,:]- edges[0][-1,0,:]
+            edges, ROI, orientation, flowRight = getEdgesFromContours(orig,c,stingc,flags,
+                                                                      draw=draw,plot=False)
+            ### determine if edges need to be merged
             if len(c) < 50 or (len(c)==len(stingc) and (c==stingc).all()):
-                print(len(c),'using stingc only')
-                
+                log.write(len(c),'no model contour, using stingc only')
             elif flags['saturated']:
+                log.write('saturated frame, no model contour')
                 pass
             else:
                 try:
                     cn = combineEdges(edges[0],edges[1],flowRight)
                     edges = (cn,stingc)
+                    if draw:
+                        cv.drawContours(orig, cn, -1, (0,0,255), 1)
                 except:
-                    print('Corner correction failed')
-        except TypeError:
+                    log.write('corner correction failed')
+        except TypeError: # catch when return type is None
+            log.write('failed HSV edge detection')
             return None
+
+    if annotate:
+        annotateImage(orig,flags)
+    if plot:
+        plt.figure()
+        plt.title("Plotting getModelProps")
+        rgb = orig[...,::-1].copy()
+        plt.imshow(rgb)
+        plt.show()
 
     return edges, ROI, orientation, flowRight,flags
 
-def getPose():
-    return
+def annotateImage(orig,flags,top=True,left=True):
+    y,x,c = np.shape(orig)
 
-def getModelEdge():
-    return
+    if top:
+        yp = -10
+    else:
+        yp = y-100
+    if left:
+        xp = 10
+    else:
+        xp = x-100
 
+    offset=0
+    for key in flags.keys():
+        offset += 35
+        if flags[key] and key != 'modelvis':
+            cv.putText(
+             orig, #numpy array on which text is written
+             "{0}: {1}".format(key,True), #text
+             (xp,yp+offset), #position at which writing has to start
+             cv.FONT_HERSHEY_SIMPLEX, #font family
+             1, #font size
+             (0, 0, 255, 255), #font color
+             3) #font stroke
+    
 
