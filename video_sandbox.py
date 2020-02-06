@@ -6,14 +6,15 @@ import matplotlib.pyplot as plt
 
 folder = "video/"
 fname = "AHF335Run001_EastView_1.mp4"
-#fname = "IHF360-005_EastView_3_HighSpeed.mp4"
-#fname = "IHF360-003_EastView_3_HighSpeed.mp4"
+fname = "IHF360-005_EastView_3_HighSpeed.mp4"
+fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 cap = cv.VideoCapture(folder+fname)
 ret, frame = cap.read(); h,w,c = np.shape(frame)
 WRITE_VIDEO = True
-WRITE_PICKLE = True
+WRITE_PICKLE = False
 SHOW_CV = True
 SHOW_MATPLOTLIB = False
+FIRST_FRAME =1200
 
 if WRITE_VIDEO:
     vid_cod = cv.VideoWriter_fourcc('m','p','4','v')
@@ -21,7 +22,7 @@ if WRITE_VIDEO:
 
 nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
 fps = cap.get(cv.CAP_PROP_FPS)
-cap.set(cv.CAP_PROP_POS_FRAMES,0);
+cap.set(cv.CAP_PROP_POS_FRAMES,FIRST_FRAME);
 counter=0
 myc=[]
 while(True):
@@ -53,13 +54,39 @@ while(True):
     if SHOW_CV:
         # Display the resulting frame
         #cv.imwrite('frame%03d.png'%counter,frame)
+        src = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        dd = cv.GaussianBlur(src, (3, 3), 0)
+        ret1,th1 = cv.threshold(dd,2,256,cv.THRESH_BINARY)
+##        ax2.imshow(frame[...,::-1])
+        # Find contours
+        contours, hierarchy = cv.findContours(th1, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        c = max(contours, key = cv.contourArea)
+        if draw:
+            cv.drawContours(frame, c, -1, (255,0,0), 1)
+
+        ind = np.sqrt(c[:,0,0]**2 + c[:,0,1]**2).argmin()
+        print(c[ind,0,0],c[ind,0,1])
+        cv.circle(frame, (c[ind,0,0],c[ind,0,1]), 5, (255,0,255), 2)
         cv.imshow('img2',frame)
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
     if SHOW_MATPLOTLIB and not SHOW_CV:
         ax2= plt.subplot(1,1,1)
-        ax2.imshow(frame[...,::-1])
-        plt.show()
+        src = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        dd = cv.GaussianBlur(src, (3, 3), 0)
+        ret1,th1 = cv.threshold(dd,2,256,cv.THRESH_BINARY)
+##        ax2.imshow(frame[...,::-1])
+        # Find contours
+        contours, hierarchy = cv.findContours(th1, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        c = max(contours, key = cv.contourArea)
+        if draw:
+            cv.drawContours(frame, c, -1, (255,0,0), 1)
+
+        ind = np.sqrt(c[:,0,0]**2 + c[:,0,1]**2).argmin()
+        print(c[ind,0,0],c[ind,0,1])
+        cv.circle(frame, (c[ind,0,0],c[ind,0,1]), 5, (255,255,255), 3)
+##        ax2.imshow(frame)
+##        plt.show()
         
 # When everything done, release the capture
 cap.release()

@@ -9,8 +9,8 @@ from scipy.interpolate import splev, splprep, interp1d
 folder = "video/"
 fname = "AHF335Run001_EastView_1.mp4"
 fname = "IHF360-005_EastView_3_HighSpeed.mp4"
-#100fname = "IHF360-003_EastView_3_HighSpeed.mp4"
-ninterp = 1000
+fname = "IHF360-003_EastView_3_HighSpeed.mp4"
+ninterp = 2000
 
 x0 = [885-60]
 dypx = [852,861]
@@ -28,7 +28,8 @@ dfy = np.zeros((len(myc),ninterp+1))
 
 for i in range(0,len(myc),1):
     # clip bad corners
-    c, flags, ind = myc[i]
+    contour, flags, ind = myc[i]
+    c = contour[:,0,:]
 ##    start= c[0:50,0].argmin()
 ##    end = c[-50:,0].argmin() + len(c)-50 + 1
 ##    c = c[start:end,:]
@@ -47,15 +48,15 @@ for i in range(0,len(myc),1):
     x,y = xi-x0,yi-y0
    
     # save data into matrix format
-    dfx[i,1:]=xi
-    dfy[i,1:]=yi
+    dfx[i,1:]=x
+    dfy[i,1:]=y
 
     # frame number is first column
     dfx[i,0] = ind
     dfy[i,0] = ind
     
-    plt.plot(y,x,'-')
-plt.show()
+    #plt.plot(y,x,'-')
+#plt.show()
 
 ### save interpolated edges
 np.savetxt(folder+fname[0:-4] +'_X.csv', dfx,delimiter=',')

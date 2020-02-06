@@ -7,64 +7,87 @@ from scipy.interpolate import splev, splprep, interp1d
 
 folder = "video/"
 fname = "IHF360-003_EastView_3_HighSpeed.mp4"
+pxpi = 214
+rnorms = [0.75,.5,0]
+labels = ['75% radius','50% radius','Apex']
+ns,ne = 230,35
+fps = 240
 
-##folder= "video/"
-##fname = "IHF360-005_EastView_3_HighSpeed.mp4"
+folder= "video/"
+fname = "IHF360-005_EastView_3_HighSpeed.mp4"
+ns,ne = 310,35
 
 dfx = np.loadtxt(folder+fname[0:-4]+"_X.csv",delimiter=',')
 dfy = np.loadtxt(folder+fname[0:-4]+"_Y.csv",delimiter=',')
 
-time = dfx[:,0]
-okay = np.where(time != 0)
+time = dfx[:,0]-dfx[0,0]
 cx = dfx[:,1:]
 cy = dfy[:,1:]
 clen = []
 
-##y75 = (cy[35,-1])*.75
-##y50 = (cy[35,-1])*.5
-##y00 = 0
-##
-##x75,x50,x00 = [],[],[]
-##
-##for row in range(0,len(cy)):
-##    i75 = np.where(cy[row,:]>y75)[0][0]
-##    x75.append(cx[row,i75])
-##
-##    i50 = np.where(cy[row,:]>y50)[0][0]
-##    x50.append(cx[row,i50])
-##
-##    x00.append(cx[row,:].max())
+def getRadialPoint(cx,cy, rnorm):
+    y = (cy[0])*rnorm
+    ind = np.where(cy<y)[0][0]
+    print(ind)
+    xp,yp = cx[ind],cy[ind]
+    return (xp,yp),ind
 
-##plt.plot(time,x75,'r-')
-##plt.plot(time,x50,'g-')
-##plt.plot(time,x00,'b-')
 
-##plt.plot(time,cx[:,25],'r--')
-##plt.plot(time,cx[:,50],'g--')
-##plt.plot(time,cx[:,100],'b--')
-pxpi = 214
-inds = [25,50,100]
-labels = ['75% radius','50% radius','Apex']
+cpts = []
+inds = []
+for rnorm in rnorms:
+    p,ind = getRadialPoint(cx[ns,:],cy[ns,:],rnorm)
+    cpts.append(p); inds.append(ind)
 
-out = np.zeros((2312,6))
+out = np.zeros((len(cy),len(rnorms)))
+
+for i in range(0,len(cpts)):
+    xp,yp=[],[]
+    for row in range(0,len(cy)):
+        p = cpts[i]
+        lp = np.sqrt( (cx[row,:]-p[0])**2 + (cy[row,:]-p[1])**2 )
+        dl,ind = lp.min(),lp.argmin()
+        #print(ind)
+        x,y = cx[row,ind],cy[row,ind]
+        xp.append(x); yp.append(y)
+        out[row,i] = dl
+    #plt.plot(time[ns:-ne]/fps,smooth(-out[ns:-ne,i]/pxpi,window_len=48),'-')
+    plt.plot(yp[ns:-ne],xp[ns:-ne],'-')
+#plt.show()
+
+
+
+out = np.zeros((len(time[ns:-ne]),6))
 for i in range(0,len(inds)):
     
     j,label = inds[i],labels[i]
-    x = cx[okay,j]
-    a,b = ( (time[okay]-time[okay][0])/240)[150:-35],(x[0,150:-35]-x[0,150])/pxpi
+    x,y = cx[:,j],cy[:,j]
+    x0,y0 = x[ns:-ne]-cx[ns,j],y[ns:-ne]-cy[ns,j]
+    a,b,c = ( (time[ns:-ne])/fps),np.sqrt(x0**2 )/pxpi,np.sqrt(y0**2 )/pxpi
 
-    b=smooth(b,window_len=48)
-##    plt.plot(x[0,:],'-',label=label)
-    plt.fill_between(a,-b-1/pxpi,-b+1/pxpi,alpha=0.5,label=label)
+    b = smooth(x[ns:-ne],window_len=48)
+    c = smooth(y[ns:-ne],window_len=48)
+    plt.plot(c,b,'-',label=label)
+##    plt.fill_between(a,-b-1/pxpi,-b+1/pxpi,alpha=0.5,label=label)
     out[:,2*i] = a
     out[:,2*i+1]=b
-    
+
+plt.plot(cy[ns,:],cx[ns,:],'k-',label="initial")
+plt.plot(cy[-ne,:],cx[-ne,:],'k--',label="final")
+ax1=plt.gca()
+ax1.set_aspect('equal')
+
 plt.legend(loc=0)
 plt.title(fname[0:-4].replace('_',' '))
-#plt.xlim([0,a.max()])
-plt.ylabel('Recession (in)')
-plt.xlabel('Insertion Time (s)')
+##plt.xlim([0,a.max()])
+##plt.ylabel('Recession (in)')
+##plt.xlabel('Insertion Time (s)')
+
+plt.ylabel('X (pixels)')
+plt.xlabel('Y (pixels)')
+plt.grid(True)
+plt.tight_layout()
 plt.show()
-
-np.savetxt(fname[0:-4]+'_recess.csv',out, delimiter=',')
-
+##
+##np.savetxt(fname[0:-4]+'_recess.csv',out, delimiter=',')
+##
