@@ -9,7 +9,7 @@ from scipy.interpolate import splev, splprep, interp1d
 folder = "video/"
 fname = "AHF335Run001_EastView_1.mp4"
 fname = "IHF360-005_EastView_3_HighSpeed.mp4"
-fname = "IHF360-003_EastView_3_HighSpeed.mp4"
+#fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 ninterp = 2000
 
 x0 = [885-60]

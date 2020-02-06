@@ -43,6 +43,7 @@ out = np.zeros((len(cy),len(rnorms)))
 
 for i in range(0,len(cpts)):
     xp,yp=[],[]
+    label=labels[i]
     for row in range(0,len(cy)):
         p = cpts[i]
         lp = np.sqrt( (cx[row,:]-p[0])**2 + (cy[row,:]-p[1])**2 )
@@ -51,8 +52,8 @@ for i in range(0,len(cpts)):
         x,y = cx[row,ind],cy[row,ind]
         xp.append(x); yp.append(y)
         out[row,i] = dl
-    #plt.plot(time[ns:-ne]/fps,smooth(-out[ns:-ne,i]/pxpi,window_len=48),'-')
-    plt.plot(yp[ns:-ne],xp[ns:-ne],'-')
+    plt.plot(time[ns:-ne]/fps,smooth(-out[ns:-ne,i]/pxpi,window_len=48),'-',label=label+" rotated")
+##    plt.plot(yp[ns:-ne],xp[ns:-ne],'-')
 #plt.show()
 
 
@@ -65,26 +66,27 @@ for i in range(0,len(inds)):
     x0,y0 = x[ns:-ne]-cx[ns,j],y[ns:-ne]-cy[ns,j]
     a,b,c = ( (time[ns:-ne])/fps),np.sqrt(x0**2 )/pxpi,np.sqrt(y0**2 )/pxpi
 
-    b = smooth(x[ns:-ne],window_len=48)
+    b = smooth(b,window_len=48)
     c = smooth(y[ns:-ne],window_len=48)
-    plt.plot(c,b,'-',label=label)
-##    plt.fill_between(a,-b-1/pxpi,-b+1/pxpi,alpha=0.5,label=label)
+##    plt.plot(c,b,'-',label=label)
+    plt.fill_between(a,-b-1/pxpi,-b+1/pxpi,alpha=0.5,label=label)
     out[:,2*i] = a
     out[:,2*i+1]=b
 
-plt.plot(cy[ns,:],cx[ns,:],'k-',label="initial")
-plt.plot(cy[-ne,:],cx[-ne,:],'k--',label="final")
-ax1=plt.gca()
-ax1.set_aspect('equal')
+##plt.plot(cy[ns,:],cx[ns,:],'k-',label="initial")
+##plt.plot(cy[-ne,:],cx[-ne,:],'k--',label="final")
+##ax1=plt.gca()
+##ax1.set_aspect('equal')
+##plt.ylabel('X (pixels)')
+##plt.xlabel('Y (pixels)')
 
 plt.legend(loc=0)
 plt.title(fname[0:-4].replace('_',' '))
-##plt.xlim([0,a.max()])
-##plt.ylabel('Recession (in)')
-##plt.xlabel('Insertion Time (s)')
+plt.xlim([0,a.max()])
+plt.ylabel('Recession (in)')
+plt.xlabel('Insertion Time (s)')
 
-plt.ylabel('X (pixels)')
-plt.xlabel('Y (pixels)')
+
 plt.grid(True)
 plt.tight_layout()
 plt.show()
