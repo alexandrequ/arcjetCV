@@ -5,7 +5,7 @@ from scipy.interpolate import interp1d
 from Frame import getModelProps,annotateImage
 from Functions import *
 
-fname = 'sample.jpg'
+fname = 'sample5.png'
 orig = cv.imread(fname,1)
 ##img = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
 ##histr = cv.calcHist( [img], None, None, [256], (0, 256));

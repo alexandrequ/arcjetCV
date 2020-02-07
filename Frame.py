@@ -1,9 +1,9 @@
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
-from Functions import getOrientation,classifyImageHist,getEdgesFromContours
+from Functions import getOrientation,classifyImageHist,getROI
 from Functions import contoursGRAY,contoursHSV,combineEdges
-from Functions import getConvexHull
+from Functions import getConvexHull,getEdgeFromContour
 
 class Logger(object):
     def __init__(self,filename,prefix=''):
@@ -20,7 +20,7 @@ class Logger(object):
             fh.write(self.prefix+line.__str__()+'\n')
             fh.close()
 
-def getModelProps(orig,frameID,log=None,plot=False,draw=True,verbose=False,annotate=False):
+def getModelProps(orig,frameID,log=None,plot=False,draw=True,verbose=False,annotate=True):
     ### Initialize logfile
     if log is None:
         log = Logger('getModelProps.log')
@@ -32,9 +32,11 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,verbose=False,annot
     if verbose:
         log.write(flags)
 
+    ### Exit if no model visible
     if flags['modelvis'] == False:
         return None
-    
+
+    ### Sting is visible, image is bright, use grayscale countours
     if flags['stingvis']:
         log.write('sting visible')
         if flags['saturated']:
@@ -43,37 +45,68 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,verbose=False,annot
         else:
             thresh = 230
         try:
+            ### Extract grayscale contours
             c,stingc = contoursGRAY(orig,thresh,log=log)
-            ret = getEdgesFromContours(orig,c,stingc,flags,
-                                       draw=draw,plot=False)
-            edges, ROI, orientation, flowRight = ret
+
+            ### Estimate orientation, center of mass
+            th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
+            if draw:
+                cv.circle(orig,(int(cx),int(cy)),4,(0,255,0))
+            
+            ### get leading edges
+            cEdge = getEdgeFromContour(c,flowRight)
+            stingEdge= getEdgeFromContour(stingc,flowRight)
+            edges = (cEdge,stingEdge)
+
+            ### get ROI 
+            ROI = getROI(orig,cEdge,stingEdge,draw=draw,plot=plot)
         except:
             log.write('failed GRAY edge detection')
             return None
     else:
-        ### HSV contours
+        ### If sting not visible, model is isolated, use HSV
         try:
-            c,stingc = contoursHSV(orig,plot=False,draw=draw,log=log)
+            ### Extract HSV contours
+            c,stingc = contoursHSV(orig,plot=plot,draw=draw,log=log)
+
+            ### Estimate orientation, center of mass
+            th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
+            if draw:
+                cv.circle(orig,(int(cx),int(cy)),4,(0,255,0))
+
+            ### Apply convex hull if underexposed
             if flags['underexp']:
                 log.write('underexposed, imposed convex hull')
-                c = getConvexHull(c,1000)
-            stingc = getConvexHull(stingc,10000)
-            edges, ROI, orientation, flowRight = getEdgesFromContours(orig,c,stingc,flags,
-                                                                      draw=draw,plot=False)
-            ### determine if edges need to be merged
-            if len(c) < 50 or (len(c)==len(stingc) and (c==stingc).all()):
-                log.write(len(c),'no model contour, using stingc only')
-            elif flags['saturated']:
-                log.write('saturated frame, no model contour')
-                pass
-            else:
-                try:
-                    cn = combineEdges(edges[0],edges[1],flowRight)
-                    edges = (cn,stingc)
-                    if draw:
-                        cv.drawContours(orig, cn, -1, (0,0,255), 1)
-                except:
-                    log.write('corner correction failed')
+                c = getConvexHull(c,len(c),flowRight)
+                stingc = getConvexHull(stingc,len(stingc),flowRight)
+
+            ### get leading edges
+            cEdge = getEdgeFromContour(c,flowRight)
+            stingEdge= getEdgeFromContour(stingc,flowRight)
+            edges = (cEdge,stingEdge)
+
+            ### get ROI 
+            ROI = getROI(orig,cEdge,stingEdge,draw=draw,plot=plot)
+            
+            ### try to correct corners
+            try:
+                if flags['underexp']:
+                    cutoff = 35
+                else:
+                    cutoff = 5
+
+                if flowRight:
+                    if edges[1][-1,0,0]>edges[0][-1,0,0]:
+                        cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
+                        edges = (cn,stingc)
+                else:
+                    if edges[1][-1,0,0]<edges[0][-1,0,0]:
+                        cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
+                        edges = (cn,stingc)
+                if draw:
+                    cv.drawContours(orig, cn, -1, (0,0,255), 1)
+            except:
+                log.write('corner correction failed')
         except TypeError: # catch when return type is None
             log.write('failed HSV edge detection')
             return None
@@ -82,12 +115,12 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,verbose=False,annot
         annotateImage(orig,flags)
     if plot:
         plt.figure()
-        plt.title("Plotting getModelProps")
+        plt.title("Plotting getModelProps %s"%str(frameID))
         rgb = orig[...,::-1].copy()
         plt.imshow(rgb)
         plt.show()
 
-    return edges, ROI, orientation, flowRight,flags
+    return edges, ROI, (th,cx,cy), flowRight,flags
 
 def annotateImage(orig,flags,top=True,left=True):
     y,x,c = np.shape(orig)

@@ -15,7 +15,7 @@ def interpolateContour(contour,ninterp,kind='linear'):
     x,y= contour[:,0,0],contour[:,0,1]
     # identify duplicate points
     okay = np.where(np.abs(np.diff(x)) + np.abs(np.diff(y)) > 0)
-    xp,yp = x[okay],y[okay]
+    xp,yp = np.append(x[okay],x[0:1]),np.append(y[okay],y[0:1])
 
     # find normalized length parameterization
     dl = np.sqrt(np.diff(xp)**2 + np.diff(yp)**2)
@@ -33,7 +33,7 @@ def interpolateContour(contour,ninterp,kind='linear'):
 
     return output
     
-def getConvexHull(contour,ninterp):
+def getConvexHull(contour,ninterp,flowRight,plot=False):
     """
     Returns interpolated convexHull contour
 
@@ -42,8 +42,20 @@ def getConvexHull(contour,ninterp):
     :returns: c, interpolated pixel positions
     """
     c= cv.convexHull(contour,clockwise=True)
-    c = interpolateContour(c,ninterp,kind='linear')
     c = np.append(c[-1:,:,:],c,axis=0)
+
+    ### cycle contour indices such that 
+    ### index==0 is at top left (min row) 
+    ind = c[:,0,1].argmin(); c= np.roll(c,-ind+1,axis=0)
+
+    # Interpolate positions
+    c = interpolateContour(c,ninterp)
+
+    if plot:
+        plt.plot(c[:,:,0],c[:,:,1],'kx')
+        plt.plot(c[0,:,0],c[0,:,1],'ro')
+        plt.plot(c[5,:,0],c[5,:,1],'bo')
+        plt.show()
     
     return c.astype(np.int32)
 
@@ -174,7 +186,7 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
     return c,stingc
 
 def contoursHSV(orig,draw=False,plot=False,log=None,
-                minHSV=(90,0,100),maxHSV=(128,255,255),
+                minHSV=(95,0,100),maxHSV=(128,255,255),
                 stingMinHSV=(60,200,40),stingMaxHSV=(110,250,255),
                 modelpercent=.005):
     """
@@ -236,33 +248,43 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
             return None
         if len(contours) == 0 or cv.contourArea(c) < npx*modelpercent:
             c = stingc
+            log.write('no model contour, using stingc only')
     else:
         if log is not None:
             log.write('no HSV-sq contours found')
         return None
     
     if draw:
-        cv.drawContours(orig, [c], -1, (255,0,0), 1)
-        cv.drawContours(orig, stingc, -1, (0,255,0), 1)
+        cv.drawContours(orig, c, -1, (255,0,0), 1)
+        #cv.drawContours(orig, stingc, -1, (0,255,0), 1)
+
+    # Plot colorspaces
+    if plot:
+        plt.figure(figsize=(8, 16))
+        rgb = orig[...,::-1].copy()
+        plt.subplot(2,1,1),plt.imshow(rgb)
+        plt.title('RGB colorspace')
+        plt.subplot(2,1,2),plt.imshow(hsv)
+        plt.title('HSV-sq colorspace')
+        plt.tight_layout()
+        plt.show()
     
     return c,stingc
 
-def getEdgesFromContours(orig,c,stingc,flags,
-                         draw=False,plot=False):
+def getROI(orig,c,stingc,draw=False,plot=False):
     """
-    Finds front edge for two contours and flag dictionary.
+    Finds ROI for two contours
 
     :param orig: opencv 8bit BGR image
     :param c: opencv contour for model, shape(n,1,n)
     :param stingc: opencv contour for sting, shape(n,1,n)
-    :param flags: dictionary of flags classifying image
     :param draw: boolean, if True draws on orig image
     :param plot: boolean, if True plots orig image & HSV-sq image
-    :returns: edges, ROI, orientation, boolean flowRight
+    :returns: ROI
     """
+    
     ### Bounding box
-    th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
-    dx = int(w/4.)
+    x,y,w,h = cv.boundingRect(c)
     xs,ys,ws,hs = cv.boundingRect(stingc)
 
     x1,x2 = min(x,xs),max(x+w,xs+ws)
@@ -270,21 +292,12 @@ def getEdgesFromContours(orig,c,stingc,flags,
 
     ROI = (x1,y1,x2-x1,y2-y1)
     boxes = ((x,y,w,h),(xs,ys,ws,hs))
-    orientation = (th,cx,cy)
-
-    cEdge = getFrontEdgeFromContour(c,flowRight)
-    stingEdge= getFrontEdgeFromContour(stingc,flowRight)
-
-    edges = (cEdge,stingEdge)
     
     ### Draw features
     if draw:
-##        cv.rectangle(orig,(x,y,w,h),(0,0,255))
-##        cv.rectangle(orig,(xs,ys,ws,hs),(0,255,255))
         cv.rectangle(orig,ROI,(255,255,255))
-        cv.circle(orig,(int(cx),int(cy)),4,(0,255,0))
-        cv.drawContours(orig, cEdge, -1, (255,0,0), 1)
-        cv.drawContours(orig, stingEdge, -1, (0,255,0), 1)
+        cv.drawContours(orig, c, -1, (255,0,0),1)
+        cv.drawContours(orig, stingc, -1, (0,255,0), 1)
     
     if plot:
         # show the images
@@ -293,10 +306,11 @@ def getEdgesFromContours(orig,c,stingc,flags,
         rgb = orig[...,::-1].copy()
         plt.subplot(1,1,1)
         plt.imshow(rgb)
+        plt.tight_layout()
         plt.show()
-    return edges, ROI, orientation, flowRight
+    return ROI
 
-def getFrontEdgeFromContour(c,flowRight):
+def getEdgeFromContour(c,flowRight,draw=False,color=(255,0,0)):
     """
     Find front edge of contour given flow direction
 
@@ -305,22 +319,24 @@ def getFrontEdgeFromContour(c,flowRight):
     :returns: frontedge, contour of front edge
     """
     ### contours are oriented counterclockwise from top left
+    ymin_ind = c[:,0,1].argmin()
+    ymax_ind = c[:,0,1].argmax()
     if flowRight:
-        ymax_ind = c[:,0,1].argmax()
-        frontedge = c[:ymax_ind,:,:]
+        frontedge = c[ymin_ind:ymax_ind,:,:]
     else:
-        ymin_ind = c[:,0,1].argmax()
-        frontedge = c[ymin_ind:,:,:]
+        ymax_ind = c[:,0,1].argmax()
+        frontedge = c[ymax_ind:ymin_ind,:,:]
+    if draw:
+        cv.drawContours(orig, frontedge, -1, color, 2)
     return frontedge
 
-def combineEdges(c,stingc,flowRight,cutoff=50):
+def combineEdges(c,stingc,cutoff=50):
     """
     Combine model and sting contours to capture
     front corners of models
     
     :param c: opencv contour for model, shape(n,1,n)
     :param stingc: opencv contour for sting, shape(n,1,n)
-    :param flowRight: boolean for flow direction
     :param cutoff: integer, # of elements at edge of model contour to clip
     :returns: merged contour
     """
