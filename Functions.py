@@ -191,7 +191,7 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
 
 def contoursHSV(orig,draw=False,plot=False,log=None,
                 minHue=95,maxHue=121,flags=None,
-                modelpercent=.004):
+                modelpercent=.005):
     """
     Find contours for good images and underexposed images.
     Uses the BGR-HSV transformation twice to increase edge contrast.
@@ -220,7 +220,7 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
     minHSV = (int(minHue),0,int(peaki-10))
     maxHSV = (int(maxHue),255,255)
 
-    stingMinHSV = (minHue-30,0,int(peaki/4))
+    stingMinHSV = (minHue-35,0,55)
     stingMaxHSV = (maxHue+30,255,255)
     
     hsv = cv.cvtColor(hsv_, cv.COLOR_RGB2HSV)
@@ -328,7 +328,7 @@ def getROI(orig,c,stingc,draw=False,plot=False):
     if plot:
         # show the images
         plt.figure()
-        plt.title("Plotting getEdgesFromContours")
+        plt.title("Plotting getROI")
         rgb = orig[...,::-1].copy()
         plt.subplot(1,1,1)
         plt.imshow(rgb)
@@ -350,8 +350,7 @@ def getEdgeFromContour(c,flowRight,draw=False,color=(255,0,0)):
     if flowRight:
         frontedge = c[ymin_ind:ymax_ind,:,:]
     else:
-        ymax_ind = c[:,0,1].argmax()
-        frontedge = c[ymax_ind:ymin_ind,:,:]
+        frontedge = c[ymax_ind:,:,:]
     if draw:
         cv.drawContours(orig, frontedge, -1, color, 2)
     return frontedge
@@ -367,8 +366,15 @@ def combineEdges(c,stingc,cutoff=50):
     :returns: merged contour
     """
     ### top corner
-    pc = c[cutoff,:,:]
-    ind = np.where(stingc[:,0,0] == pc[0,0])[0][0]
+    pc = c[cutoff,0,:]
+    #print(pc,stingc[:,0,0])
+
+##    f = plt.figure()
+##    plt.plot(c[:,0,0],c[:,0,1],'b-')
+##    plt.plot(stingc[:,0,0],stingc[:,0,1],'r-')
+##    plt.show()
+    ind = np.where(stingc[:,0,0] == pc[0])[0][0]
+    #print(ind)
     mt=stingc[:ind+1,0,:]
     
     #linear offset correction

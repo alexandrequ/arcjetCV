@@ -38,7 +38,7 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
         return None
 
     ### Sting is visible, image is bright, use grayscale countours
-    if flags['overexp']:
+    if flags['stingvis']:
         log.write('overexposed')
         if flags['saturated']:
             log.write('saturated')
@@ -73,22 +73,22 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
             elif flags['underexp']:
                 minHue=75;maxHue=170
             else:
-                minHue=95;maxHue=150
+                minHue=100;maxHue=130
             
-            c,stingc = contoursHSV(orig,plot=plot,draw=draw,log=log,
+            c,stingc = contoursHSV(orig,plot=plot,draw=True,log=log,
                                    minHue=minHue,maxHue=maxHue,
                                    modelpercent=modelpercent,flags=flags)
 
             ### Estimate orientation, center of mass
-            th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
+            th,cx,cy,(x,y,w,h),flowRight = getOrientation(stingc)
             if draw:
                 cv.circle(orig,(int(cx),int(cy)),4,(0,255,0))
 
             ### Apply convex hull if underexposed
-            if flags['underexp']:
-                log.write('underexposed, imposed convex hull')
+            if not flags['overexp']:
+                #log.write('underexposed, imposed convex hull')
+                c = getConvexHull(c,min(len(c),1000),flowRight)
                 stingc = getConvexHull(stingc,len(stingc),flowRight)
-                c = getConvexHull(c,len(c),flowRight)
             ### get leading edges
             cEdge = getEdgeFromContour(c,flowRight)
             stingEdge= getEdgeFromContour(stingc,flowRight)
@@ -103,7 +103,7 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
                     if flags['underexp']:
                         cutoff = 35
                     else:
-                        cutoff = 5
+                        cutoff = 50
 
                     if flowRight:
                         if edges[1][-1,0,0]>edges[0][-1,0,0]:
@@ -119,7 +119,6 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
                     log.write('corner correction failed')
         except TypeError: # catch when return type is None
             log.write('failed HSV edge detection')
-            #raise
             return None
 
     if annotate:
