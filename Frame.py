@@ -20,7 +20,8 @@ class Logger(object):
             fh.write(self.prefix+line.__str__()+'\n')
             fh.close()
 
-def getModelProps(orig,frameID,log=None,plot=False,draw=True,verbose=False,annotate=True):
+def getModelProps(orig,frameID,log=None,plot=False,draw=True,
+                  verbose=False,annotate=True,modelpercent=.001):
     ### Initialize logfile
     if log is None:
         log = Logger('getModelProps.log')
@@ -28,7 +29,7 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,verbose=False,annot
 
     ### Classify image
     gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
-    flags = classifyImageHist(gray)
+    flags = classifyImageHist(gray,verbose=verbose,modelpercent=.001)
     if verbose:
         log.write(flags)
 
@@ -37,13 +38,13 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,verbose=False,annot
         return None
 
     ### Sting is visible, image is bright, use grayscale countours
-    if flags['stingvis']:
-        log.write('sting visible')
+    if flags['overexp']:
+        log.write('overexposed')
         if flags['saturated']:
             log.write('saturated')
             thresh = 252
         else:
-            thresh = 230
+            thresh = 210
         try:
             ### Extract grayscale contours
             c,stingc = contoursGRAY(orig,thresh,log=log)
@@ -67,7 +68,16 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,verbose=False,annot
         ### If sting not visible, model is isolated, use HSV
         try:
             ### Extract HSV contours
-            c,stingc = contoursHSV(orig,plot=plot,draw=draw,log=log)
+            if flags['overexp']:
+                minHue=95;maxHue=123
+            elif flags['underexp']:
+                minHue=75;maxHue=170
+            else:
+                minHue=95;maxHue=150
+            
+            c,stingc = contoursHSV(orig,plot=plot,draw=draw,log=log,
+                                   minHue=minHue,maxHue=maxHue,
+                                   modelpercent=modelpercent,flags=flags)
 
             ### Estimate orientation, center of mass
             th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
@@ -77,38 +87,39 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,verbose=False,annot
             ### Apply convex hull if underexposed
             if flags['underexp']:
                 log.write('underexposed, imposed convex hull')
-                c = getConvexHull(c,len(c),flowRight)
                 stingc = getConvexHull(stingc,len(stingc),flowRight)
-
+                c = getConvexHull(c,len(c),flowRight)
             ### get leading edges
             cEdge = getEdgeFromContour(c,flowRight)
             stingEdge= getEdgeFromContour(stingc,flowRight)
             edges = (cEdge,stingEdge)
 
             ### get ROI 
-            ROI = getROI(orig,cEdge,stingEdge,draw=draw,plot=plot)
+            ROI = getROI(orig,cEdge,stingEdge,draw=draw,plot=False)
             
             ### try to correct corners
-            try:
-                if flags['underexp']:
-                    cutoff = 35
-                else:
-                    cutoff = 5
+            if not flags['saturated']:
+                try:
+                    if flags['underexp']:
+                        cutoff = 35
+                    else:
+                        cutoff = 5
 
-                if flowRight:
-                    if edges[1][-1,0,0]>edges[0][-1,0,0]:
-                        cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
-                        edges = (cn,stingc)
-                else:
-                    if edges[1][-1,0,0]<edges[0][-1,0,0]:
-                        cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
-                        edges = (cn,stingc)
-                if draw:
-                    cv.drawContours(orig, cn, -1, (0,0,255), 1)
-            except:
-                log.write('corner correction failed')
+                    if flowRight:
+                        if edges[1][-1,0,0]>edges[0][-1,0,0]:
+                            cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
+                            edges = (cn,stingc)
+                    else:
+                        if edges[1][-1,0,0]<edges[0][-1,0,0]:
+                            cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
+                            edges = (cn,stingc)
+                    if draw:
+                        cv.drawContours(orig, cn, -1, (0,0,255), 1)
+                except:
+                    log.write('corner correction failed')
         except TypeError: # catch when return type is None
             log.write('failed HSV edge detection')
+            #raise
             return None
 
     if annotate:
@@ -126,17 +137,17 @@ def annotateImage(orig,flags,top=True,left=True):
     y,x,c = np.shape(orig)
 
     if top:
-        yp = -10
+        yp = int(y*.025)
     else:
-        yp = y-100
+        yp = int(y*.85)
     if left:
-        xp = 10
+        xp = int(x*.025)
     else:
-        xp = x-100
+        xp = int(y*.85)
 
     offset=0
     for key in flags.keys():
-        offset += 35
+        
         if flags[key] and key != 'modelvis':
             cv.putText(
              orig, #numpy array on which text is written
@@ -146,5 +157,6 @@ def annotateImage(orig,flags,top=True,left=True):
              1, #font size
              (0, 0, 255, 255), #font color
              3) #font stroke
+        offset += int(y*.035)
     
 

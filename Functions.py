@@ -110,18 +110,22 @@ def classifyImageHist(gray,verbose=False,stingpercent=.05,modelpercent=.005):
     imgsize = gray.size
 
     ### classification criteria
-    modelvis = (histr[12:250]/imgsize > 0.15).sum() != 1
+    modelvis = (histr[12:250]/imgsize > 0.00).sum() != 1
     modelvis *= histr[50:250].sum()/imgsize > modelpercent
     stingvis= histr[50:100].sum()/imgsize > stingpercent
-    overexp = histr[250:].sum()/imgsize > modelpercent
+    overexp = histr[240:].sum()/imgsize > modelpercent
     underexp= histr[150:].sum()/imgsize < modelpercent
-    saturated = histr[254:].sum()/imgsize > modelpercent
+    saturated = histr[253:].sum()/imgsize > modelpercent
     if verbose:
         print("Model visible",modelvis)
         print("Sting visible",stingvis)
         print("overexposed", overexp)
         print("underexposed", underexp)
         print("saturated",saturated)
+        plt.title("Grayscale Histogram")
+        plt.plot(histr/imgsize,'-')
+        plt.ylim([0,histr[12:].max()/imgsize])
+        plt.show()
     return {'underexp':underexp,
             'overexp':overexp,
             'saturated':saturated,
@@ -156,7 +160,7 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
     b,g,r = cv.split(orig)
     ind = np.argmin([b.sum(),g.sum(),r.sum()])
     gray = orig[:,:,ind]
-    
+
     ### Global grayscale threshold
     gray=cv.GaussianBlur(gray, (5, 5), 0)
     ret1,th1 = cv.threshold(gray,thresh,256,cv.THRESH_BINARY)
@@ -186,9 +190,8 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
     return c,stingc
 
 def contoursHSV(orig,draw=False,plot=False,log=None,
-                minHSV=(95,0,100),maxHSV=(128,255,255),
-                stingMinHSV=(60,200,40),stingMaxHSV=(110,250,255),
-                modelpercent=.005):
+                minHue=95,maxHue=121,flags=None,
+                modelpercent=.004):
     """
     Find contours for good images and underexposed images.
     Uses the BGR-HSV transformation twice to increase edge contrast.
@@ -207,29 +210,49 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
     # Load an color image in HSV, apply HSV transform again
     hsv_ = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
     hsv_=cv.GaussianBlur(hsv_, (5, 5), 0)
-    maxpx = hsv_[:,:,2].max()+1
-    hsv_[:,:,2] = (hsv_[:,:,2]*(255/maxpx)).astype(np.uint8)
-    hsv = cv.cvtColor(hsv_, cv.COLOR_RGB2HSV)
-    npx = hsv[:,:,2].size
+    inten = hsv_[:,:,2]
+    histr = cv.calcHist( [inten], None, None, [256], (0, 256))
+    if (flags is not None) and flags['overexp']:
+        peaki = min(max(150, histr[150:].argmax()+150),210)
+    else:
+        peaki = min(max(30, histr[35:].argmax()+35),210)        
 
+    minHSV = (int(minHue),0,int(peaki-10))
+    maxHSV = (int(maxHue),255,255)
+
+    stingMinHSV = (minHue-30,0,int(peaki/4))
+    stingMaxHSV = (maxHue+30,255,255)
+    
+    hsv = cv.cvtColor(hsv_, cv.COLOR_RGB2HSV)
+    npx = inten.size
+    
     # retrieve original hsv intensity
-    hsv[:,:,2] = hsv_[:,:,2]
+    hsv[:,:,2] = inten
+
+    # plot hue histogram
+    if plot:
+        plt.figure()    
+        plt.title("Hue Histogram")
+        plt.plot(histr/npx,'-')
+        plt.ylim([0,modelpercent/2])
+        plt.show()
 
     # Plot colorspaces
     if plot:
         plt.figure(figsize=(8, 16))
         rgb = orig[...,::-1].copy()
-        plt.subplot(2,1,1),plt.imshow(rgb)
+        plt.subplot(3,1,1),plt.imshow(rgb)
         plt.title('RGB colorspace')
-        plt.subplot(2,1,2),plt.imshow(hsv)
+        plt.subplot(3,1,2),plt.imshow(hsv_[:,:,2])
+        plt.title('HSV colorspace')
+        plt.subplot(3,1,3),plt.imshow(hsv)
         plt.title('HSV-sq colorspace')
         plt.tight_layout()
         plt.show()
-
     ### Find model contours
-    maskHSV = cv.inRange(hsv, minHSV, maxHSV)
+    maskHSV = cv.inRange(hsv, minHSV,maxHSV)
     contours,hierarchy = cv.findContours(maskHSV, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-
+    
     ### Sting adaptor contours
     stinghsv=cv.GaussianBlur(hsv, (15, 15), 0)
     stingMaskHSV = cv.inRange(stinghsv, stingMinHSV, stingMaxHSV)
@@ -238,7 +261,10 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
     if len(contours) != 0:
         # find the biggest contour (c) by the area
         c = max(contours, key = cv.contourArea)
-
+        if plot:
+            print(cv.contourArea(c)/npx)
+        #cv.drawContours(orig, c, -1, (255,0,0), 1)
+        
     if len(stingContours) !=0:
         # find the biggest contour (c) by the area
         stingc = max(stingContours, key = cv.contourArea)
@@ -256,7 +282,7 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
     
     if draw:
         cv.drawContours(orig, c, -1, (255,0,0), 1)
-        #cv.drawContours(orig, stingc, -1, (0,255,0), 1)
+        cv.drawContours(orig, stingc, -1, (0,255,0), 1)
 
     # Plot colorspaces
     if plot:
