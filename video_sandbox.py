@@ -4,19 +4,19 @@ from Frame import getModelProps
 from Functions import classifyImageHist
 import matplotlib.pyplot as plt
 
-folder = "video/IHF338/"
-fname = "AHF335Run001_EastView_1.mp4"
-fname = "IHF338Run001_WestView_2.mp4"
+folder = "video/"
+fname = "AHF335Run002_EastView_1.mp4"
+fname = "IHF338Run006_EastView_1.mp4"
 
 ##folder = "video/"
 ##fname = "IHF360-005_EastView_3_HighSpeed.mp4"
 #fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 cap = cv.VideoCapture(folder+fname)
 ret, frame = cap.read(); h,w,chan = np.shape(frame)
-WRITE_VIDEO = True
-WRITE_PICKLE = True
+WRITE_VIDEO = False
+WRITE_PICKLE = False
 SHOW_CV = True
-FIRST_FRAME = 550
+FIRST_FRAME = 361#+303
 
 if WRITE_VIDEO:
     vid_cod = cv.VideoWriter_fourcc('m','p','4','v')
@@ -48,7 +48,7 @@ while(True):
         verbose=True
         
     ret = getModelProps(frame,counter,draw=draw,plot=plot,verbose=verbose,
-                        modelpercent=.001)
+                        modelpercent=.005)
 
     if ret != None:
         (c,stingc), ROI, orientation, flowRight,flags = ret

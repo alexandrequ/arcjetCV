@@ -17,15 +17,15 @@ orig = cv.imread(fname,1)
 
 # get ROI
 ##try:
-(c,stingc), ROI, orientation, flowRight,flags = getModelProps(orig,fname,plot=True,annotate=True)
+#(c,stingc), ROI, orientation, flowRight,flags = getModelProps(orig,fname,plot=True,annotate=True)
 ##print(flowRight)
 
 gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
 flags = classifyImageHist(gray)
-c,stingc = contoursHSV(orig,plot=True,draw=False,
-                       minHSV=(90,0,100),maxHSV=(128,255,255),
-                       stingMinHSV=(62,200,40),stingMaxHSV=(110,250,255))
-
+c,stingc = contoursHSV(orig,plot=plot,draw=draw,log=log,
+                                   minHue=minHue,maxHue=maxHue,
+                                   modelpercent=modelpercent,flags=flags)
+th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
 cn = getConvexHull(c,1000)
 stingc = getConvexHull(stingc,10000)
 cv.drawContours(orig, cn, -1, (0,255,255), 1)
