@@ -162,7 +162,7 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
     gray = orig[:,:,ind]
 
     ### Global grayscale threshold
-    gray=cv.GaussianBlur(gray, (5, 5), 0)
+    gray=cv.GaussianBlur(gray, (5, 5), 0)        
     ret1,th1 = cv.threshold(gray,thresh,256,cv.THRESH_BINARY)
     contours,hierarchy = cv.findContours(th1, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     if len(contours) != 0:
@@ -175,7 +175,7 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
             log.write('no GRAY model contours found at thresh==%i'%thresh)
         return None
 
-    ret2,th2 = cv.threshold(gray,200,256,cv.THRESH_BINARY)
+    ret2,th2 = cv.threshold(gray,thresh-35,256,cv.THRESH_BINARY)
     contours,hierarchy = cv.findContours(th2, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     if len(contours) != 0:
         # find the biggest contour (c) by the area

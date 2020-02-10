@@ -22,16 +22,23 @@ orig = cv.imread(fname,1)
 
 gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
 flags = classifyImageHist(gray)
-c,stingc = contoursHSV(orig,plot=plot,draw=draw,log=log,
-                                   minHue=minHue,maxHue=maxHue,
-                                   modelpercent=modelpercent,flags=flags)
+sobelx = cv.Sobel(gray,cv.CV_64F,1,0,ksize=1)
+abs_sobel64f = np.absolute(sobelx)
+sobel_8u = np.uint8(abs_sobel64f)
+plt.figure();plt.imshow(sobelx,cmap = 'gray');plt.show()
+
+c,stingc = contoursHSV(orig,plot=True,draw=True,log=None,flags=flags)
 th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
-cn = getConvexHull(c,1000)
-stingc = getConvexHull(stingc,10000)
+cn = getConvexHull(c,1000,flowRight)
+stingc = getConvexHull(stingc,1000,flowRight)
 cv.drawContours(orig, cn, -1, (0,255,255), 1)
 
-edges, ROI, orientation, flowRight = getEdgesFromContours(orig,c,stingc,flags,draw=True,plot=False)
-cnn = combineEdges(edges[0],edges[1],flowRight)
+cEdge = getEdgeFromContour(c,flowRight)
+stingEdge= getEdgeFromContour(stingc,flowRight)
+edges = (cEdge,stingEdge)
+
+ROI = getROI(orig,cEdge,stingEdge,draw=True,plot=False)
+cnn = combineEdges(edges[0],edges[1])
 cv.drawContours(orig, cnn, -1, (0,0,255), 1)
 
 plt.figure(0)
