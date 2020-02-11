@@ -1,0 +1,26 @@
+Flatface issues: flowRight, size, concave
+
+
+IHF338Run001_WestView_1, 1, round, underexp
+IHF338Run001_WestView_2, 0, flatface, overexp&underexp
+
+IHF338Run002_WestView_1, 0, flatface, overexp&underexp
+IHF338Run002_WestView_2, 0, flatface, overexp&underexp
+IHF338Run002_WestView_3, 0, flatface, overexp&underexp
+
+IHF338Run003_WestView_1, 0, round, overexp
+IHF338Run003_WestView_2, 0, round, overexp
+IHF338Run003_WestView_3, 0, round, overexp
+
+IHF338Run004_WestView_1, 0, round, overexp, saturated
+IHF338Run004_WestView_2, 0, round, overexp, saturated
+IHF338Run004_WestView_3, 0, round, overexp, saturated
+
+IHF338Run005_WestView_1, 1, round, overexp, saturated
+IHF338Run005_WestView_2, 1, round, overexp, saturated
+IHF338Run005_WestView_3, 0, round, overexp, saturated
+
+IHF338Run006_WestView_1, 1, round, overexp/underexp/saturated
+IHF338Run006_WestView_2, 0, round, overexp, saturated
+IHF338Run006_WestView_3, 1, round, overexp, saturated
+
