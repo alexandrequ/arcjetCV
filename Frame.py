@@ -21,7 +21,7 @@ class Logger(object):
             fh.close()
 
 def getModelProps(orig,frameID,log=None,plot=False,draw=True,
-                  verbose=False,annotate=True,modelpercent=.001):
+                  verbose=False,annotate=True,modelpercent=.005):
     ### Initialize logfile
     if log is None:
         log = Logger('getModelProps.log')
@@ -29,7 +29,7 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
 
     ### Classify image
     gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
-    flags = classifyImageHist(gray,verbose=verbose,modelpercent=.001)
+    flags = classifyImageHist(gray,verbose=verbose,modelpercent=modelpercent)
     if verbose:
         log.write(flags)
 
@@ -38,16 +38,16 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
         return None
 
     ### Sting is visible, image is bright, use grayscale countours
-    if flags['stingvis']:
+    if flags['overexp']:
         log.write('overexposed')
         if flags['saturated']:
             log.write('saturated')
-            thresh = 252
+            thresh = 245
         else:
-            thresh = 210
+            thresh = 230
         try:
             ### Extract grayscale contours
-            c,stingc = contoursGRAY(orig,thresh,log=log)
+            c,stingc = contoursGRAY(orig,thresh,log=log,plot=plot)
 
             ### Estimate orientation, center of mass
             th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
@@ -63,6 +63,7 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
             ROI = getROI(orig,cEdge,stingEdge,draw=draw,plot=plot)
         except:
             log.write('failed GRAY edge detection')
+            raise
             return None
     else:
         ### If sting not visible, model is isolated, use HSV
