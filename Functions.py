@@ -113,9 +113,9 @@ def classifyImageHist(gray,verbose=False,stingpercent=.05,modelpercent=.005):
     modelvis = (histr[12:250]/imgsize > 0.00).sum() != 1
     modelvis *= histr[50:250].sum()/imgsize > modelpercent
     stingvis= histr[50:100].sum()/imgsize > stingpercent
-    overexp = histr[240:].sum()/imgsize > modelpercent
+    overexp = histr[230:].sum()/imgsize > modelpercent
     underexp= histr[150:].sum()/imgsize < modelpercent
-    saturated = histr[253:].sum()/imgsize > modelpercent
+    saturated = histr[245:].sum()/imgsize > modelpercent
     if verbose:
         print("Model visible",modelvis)
         print("Sting visible",stingvis)
@@ -157,13 +157,27 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
     """
     
     ### take channel with least saturation
-    b,g,r = cv.split(orig)
-    ind = np.argmin([b.sum(),g.sum(),r.sum()])
-    gray = orig[:,:,ind]
+    img = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
+##    b,g,r = cv.split(hsv)
+##    ind = np.argmin([b.sum(),g.sum(),r.sum()])
+##    gray = orig[:,:,ind]
+    
+    # create a CLAHE object (Arguments are optional).
+    clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    gray = clahe.apply(img)
 
     ### Global grayscale threshold
     gray=cv.GaussianBlur(gray, (5, 5), 0)        
     ret1,th1 = cv.threshold(gray,thresh,256,cv.THRESH_BINARY)
+
+    if plot:
+        plt.figure()
+        ax0 = plt.subplot(211);
+        plt.title("initial gray image")
+        plt.imshow(gray)
+        ax1 = plt.subplot(212);
+        plt.imshow(th1)
+        plt.show()
     contours,hierarchy = cv.findContours(th1, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     if len(contours) != 0:
         # find the biggest contour (c) by the area

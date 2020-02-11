@@ -4,9 +4,9 @@ from Frame import getModelProps
 from Functions import classifyImageHist
 import matplotlib.pyplot as plt
 
-folder = "video/"
-fname = "AHF335Run001_EastView_2.mp4"
-#fname = "IHF338Run006_EastView_3.mp4"
+folder = "video/IHF338/"
+fname = "IHF338Run002_WestView_1.mp4"
+#fname = "IHF338Run001_EastView_3.mp4"
 #fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 
 ##folder = "video/"
@@ -17,7 +17,7 @@ ret, frame = cap.read(); h,w,chan = np.shape(frame)
 WRITE_VIDEO = False
 WRITE_PICKLE = False
 SHOW_CV = True
-FIRST_FRAME = 1961#+303
+FIRST_FRAME = 361+361
 
 FORCEGRAY= False
 FORCEHSV = False
