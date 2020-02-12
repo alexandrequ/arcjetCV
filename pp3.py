@@ -2,94 +2,96 @@ import numpy as np
 import cv2 as cv
 import pickle
 import matplotlib.pyplot as plt
-from Functions import smooth
+from Functions import smooth,interpolateContour
+from Calibrate import splitfn
 from scipy.interpolate import splev, splprep, interp1d
+from glob import glob
 
-folder = "video/"
-fname = "IHF360-003_EastView_3_HighSpeed.mp4"
-pxpi = 214
-rnorms = [0.75,.5,0]
-labels = ['75% radius','50% radius','Apex']
-ns,ne = 230,35
+folder = "video/IHF338/"
+
+mask = folder + 'IHF338Run003_WestView_2_edges.pkl'  # default
+paths = glob(mask)
+
+
+### Units
+rnorms = [-.75,-.5,0,.5,0.75]
+rnorms = [0]
+labels = ['75% radius','50% radius','Apex','75% radius','50% radius']
 fps = 240
+minArea = 1200
+sample_radius = 4 #inches
+skip=4
+PLOTXY=True;PLOTTIME=True;VERBOSE=True
 
-folder= "video/"
-fname = "IHF360-005_EastView_3_HighSpeed.mp4"
-ns,ne = 310,35
+for path in paths:
+    pth, name, ext = splitfn(path)
+    fname = name+ext;print("### "+ name)
 
-dfx = np.loadtxt(folder+fname[0:-4]+"_X.csv",delimiter=',')
-dfy = np.loadtxt(folder+fname[0:-4]+"_Y.csv",delimiter=',')
+    ### Load pickle file
+    fin = open(path,'rb');myc = np.array(pickle.load(fin));fin.close()
 
-time = dfx[:,0]-dfx[0,0]
-cx = dfx[:,1:]
-cy = dfy[:,1:]
-clen = []
+    ### Parse file
+    t0,tf = myc[0,0],myc[-1,0]
+    time= myc[skip:-skip,0].astype(np.int16)
+    cy = myc[skip:-skip,1].astype(np.float)
+    dy = myc[skip:-skip,2].astype(np.float)
+    area = myc[skip:-skip,3].astype(np.float)
+    cntrs = myc[skip:-skip,4]
+    flagList = myc[skip:-skip,5]
 
-def getRadialPoint(cx,cy, rnorm):
-    y = (cy[0])*rnorm
-    ind = np.where(cy<y)[0][0]
-    print(ind)
-    xp,yp = cx[ind],cy[ind]
-    return (xp,yp),ind
+    R_px = dy.max()/2.
 
+    ### Filter by area,time
+    finite_area = area > minArea
+    ddt_area = np.append(np.zeros(1),abs(np.diff(area)) < 1200)
 
-cpts = []
-inds = []
-for rnorm in rnorms:
-    p,ind = getRadialPoint(cx[ns,:],cy[ns,:],rnorm)
-    cpts.append(p); inds.append(ind)
+    goodinds = np.nonzero(finite_area*ddt_area)[0]
 
-out = np.zeros((len(cy),len(rnorms)))
+    ### Loop through pickle file
+    recess_pos =[]
+    for ind in goodinds:
+        c = cntrs[ind]
+        con = cv.convexHull(c)
+        # offset vertical motion
+        xi,yi = con[:,0,0],con[:,0,1]
+        x,y = xi,yi-cy[ind]
 
-for i in range(0,len(cpts)):
-    xp,yp=[],[]
-    label=labels[i]
-    for row in range(0,len(cy)):
-        p = cpts[i]
-        lp = np.sqrt( (cx[row,:]-p[0])**2 + (cy[row,:]-p[1])**2 )
-        dl,ind = lp.min(),lp.argmin()
-        #print(ind)
-        x,y = cx[row,ind],cy[row,ind]
-        xp.append(x); yp.append(y)
-        out[row,i] = dl
-    plt.plot(time[ns:-ne]/fps,smooth(-out[ns:-ne,i]/pxpi,window_len=48),'-',label=label+" rotated")
-##    plt.plot(yp[ns:-ne],xp[ns:-ne],'-')
-#plt.show()
+        # interpolate desired radial positions
+        f = interp1d(y[2:-1], x[2:-1], kind='cubic')
+        xi = f(np.array(rnorms)*R_px)
+        recess_pos.append(xi)
+        
+        if PLOTXY:
+            plt.plot(y*sample_radius/R_px,x*sample_radius/R_px,'o-')            
 
+    ### Cast list to array
+    rp = np.array(recess_pos)
+    t = time[goodinds]
+    sec = (t-t0)/fps
+    xpos = rp*sample_radius/R_px
 
-
-out = np.zeros((len(time[ns:-ne]),6))
-for i in range(0,len(inds)):
+    ### remove >2 pixel jumps
+    diff = abs(np.diff(rp,axis=0))>2
+    isDiffGT2 = np.vstack((diff[0,:]*0,diff))
+    rp[np.nonzero(isDiffGT2)[0]] = np.nan
     
-    j,label = inds[i],labels[i]
-    x,y = cx[:,j],cy[:,j]
-    x0,y0 = x[ns:-ne]-cx[ns,j],y[ns:-ne]-cy[ns,j]
-    a,b,c = ( (time[ns:-ne])/fps),np.sqrt(x0**2 )/pxpi,np.sqrt(y0**2 )/pxpi
+    if PLOTXY:
+        for i in range(0,len(rnorms)):
+            ys = rnorms[i]*R_px*np.ones(len(rp))
+            plt.plot(ys*sample_radius/R_px,rp[:,i]*sample_radius/R_px,'x')
+        plt.show()
+    if PLOTTIME:
+        err= 2*np.ones(len(sec))*sample_radius/R_px
+        inds = np.arange(0,len(sec))
+        err[inds>150] /= 10000.
+        for i in range(0,len(rnorms)):
+            plt.plot(sec,xpos[:,i],'o',label="%f"%rnorms[i])
+            coeff,cov = np.polyfit(sec, xpos[:,i], 1,cov=True,w=1/err)
+            dm = np.sqrt(cov[0,0])
+            plt.plot(sec,sec*coeff[0]+coeff[1],'-')
+            dsec = (tf-t0)/fps
+            print("slope: %f +- %f, %f R"%(coeff[0],dm,rnorms[i]))
+            print("recession: %f +- %f, %f R"%(dsec*coeff[0],2*sample_radius/R_px,rnorms[i]))
+        plt.legend(loc=0)
+        plt.show()
 
-    b = smooth(b,window_len=48)
-    c = smooth(y[ns:-ne],window_len=48)
-##    plt.plot(c,b,'-',label=label)
-    plt.fill_between(a,-b-1/pxpi,-b+1/pxpi,alpha=0.5,label=label)
-    out[:,2*i] = a
-    out[:,2*i+1]=b
-
-##plt.plot(cy[ns,:],cx[ns,:],'k-',label="initial")
-##plt.plot(cy[-ne,:],cx[-ne,:],'k--',label="final")
-##ax1=plt.gca()
-##ax1.set_aspect('equal')
-##plt.ylabel('X (pixels)')
-##plt.xlabel('Y (pixels)')
-
-plt.legend(loc=0)
-plt.title(fname[0:-4].replace('_',' '))
-plt.xlim([0,a.max()])
-plt.ylabel('Recession (in)')
-plt.xlabel('Insertion Time (s)')
-
-
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-##
-##np.savetxt(fname[0:-4]+'_recess.csv',out, delimiter=',')
-##
