@@ -113,10 +113,19 @@ def classifyImageHist(gray,verbose=False,stingpercent=.05,modelpercent=.005):
     modelvis = (histr[12:250]/imgsize > 0.00).sum() != 1
     modelvis *= histr[50:250].sum()/imgsize > modelpercent
     stingvis= histr[50:100].sum()/imgsize > stingpercent
-    overexp = histr[230:].sum()/imgsize > modelpercent
+    overexp = histr[243:].sum()/imgsize > modelpercent
     underexp= histr[150:].sum()/imgsize < modelpercent
-    saturated = histr[245:].sum()/imgsize > modelpercent
+
+    slimit,peaki=253,240
+    if overexp:
+        peaki = histr[240:].argmax() +240
+        if histr[peaki:].sum()/imgsize > modelpercent:
+            slimit = peaki-1
+        
+    saturated = histr[slimit:].sum()/imgsize > modelpercent
+    
     if verbose:
+        print('peaki, slimit', peaki,slimit)
         print("Model visible",modelvis)
         print("Sting visible",stingvis)
         print("overexposed", overexp)
@@ -130,7 +139,8 @@ def classifyImageHist(gray,verbose=False,stingpercent=.05,modelpercent=.005):
             'overexp':overexp,
             'saturated':saturated,
             'stingvis':stingvis,
-            'modelvis':modelvis}
+            'modelvis':modelvis,
+            }, slimit
 
 def analyzeCenterlineHSV(cl):
     H,S,V = cl[:,0],cl[:,1],cl[:,2]
@@ -253,11 +263,12 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
 
     # Plot colorspaces
     if plot:
+        print("min max HSV: ", minHSV,maxHSV)
         plt.figure(figsize=(8, 16))
         rgb = orig[...,::-1].copy()
         plt.subplot(3,1,1),plt.imshow(rgb)
         plt.title('RGB colorspace')
-        plt.subplot(3,1,2),plt.imshow(hsv_[:,:,2])
+        plt.subplot(3,1,2),plt.imshow(hsv_)
         plt.title('HSV colorspace')
         plt.subplot(3,1,3),plt.imshow(hsv)
         plt.title('HSV-sq colorspace')
@@ -379,37 +390,45 @@ def combineEdges(c,stingc,cutoff=50):
     :param cutoff: integer, # of elements at edge of model contour to clip
     :returns: merged contour
     """
+    lowcut,highcut =cutoff,cutoff
+    
     ### top corner
-    pc = c[cutoff,0,:]
-    #print(pc,stingc[:,0,0])
-
-##    f = plt.figure()
-##    plt.plot(c[:,0,0],c[:,0,1],'b-')
-##    plt.plot(stingc[:,0,0],stingc[:,0,1],'r-')
-##    plt.show()
+    pc = c[lowcut,0,:]
     ind = np.where(stingc[:,0,0] == pc[0])[0][0]
-    #print(ind)
     mt=stingc[:ind+1,0,:]
     
     #linear offset correction
     delta = stingc[ind,:,:] - pc
+    
+    if abs(delta[0][1]) > 15:
+        lowcut +=20
+        pc = c[lowcut,0,:]
+        ind = np.where(stingc[:,0,0] == pc[0])[0][0]
+        delta = stingc[ind,:,:] - pc
+        mt=stingc[:ind+1,0,:]
     s = np.linspace(0,1,ind+1)
     ds = (delta*s[:, np.newaxis]).astype(np.int32)
     mt -= ds
 
     ### Bottom corner
-    pc = c[-(cutoff+1),:,:]
+    pc = c[-(highcut+1),:,:]
     ind = np.where(stingc[:,0,0] == pc[0,0])[0][-1]
     mb=stingc[ind:,0,:]
-    
+
     #linear offset correction
     delta = stingc[ind,:,:] - pc
+    if abs(delta[0][1]) > 15:
+        highcut +=20
+        pc = c[-(highcut+1),:,:]
+        ind = np.where(stingc[:,0,0] == pc[0,0])[0][-1]
+        delta = stingc[ind,:,:] - pc
+        mb=stingc[ind:,0,:]
     s = np.linspace(1,0,len(mb))
     ds = (delta*s[:, np.newaxis]).astype(np.int32)
     mb -= ds
 
     # merge edge corners with center edge
-    cn = np.append(mt[:,np.newaxis,:],c[cutoff:-cutoff,:,:],axis=0)
+    cn = np.append(mt[:,np.newaxis,:],c[lowcut:-highcut,:,:],axis=0)
     cn = np.append(cn,mb[:,np.newaxis,:],axis=0)
 
     return cn
