@@ -14,7 +14,7 @@ from glob import glob
 
 folder = "video/IHF338/"
 
-mask = folder + 'IHF338Run006_WestView_1.mp4'  # default
+mask = folder + '*.mp4'  # default
 paths = glob(mask)
 
 for path in paths:    
@@ -26,7 +26,7 @@ for path in paths:
     WRITE_VIDEO = False
     WRITE_PICKLE = True
     SHOW_CV = True
-    FIRST_FRAME = 300#+303
+    FIRST_FRAME = 1300#+303
     MODELPERCENT = 0.005
 
 
