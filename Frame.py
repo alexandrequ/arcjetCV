@@ -29,7 +29,7 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
 
     ### Classify image
     gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
-    flags = classifyImageHist(gray,verbose=verbose,modelpercent=.001)
+    flags,slimit = classifyImageHist(gray,verbose=verbose,modelpercent=modelpercent)
     if verbose:
         log.write(flags)
 
@@ -38,11 +38,11 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
         return None
 
     ### Sting is visible, image is bright, use grayscale countours
-    if flags['stingvis']:
+    if flags['saturated'] or flags['stingvis']:
         log.write('overexposed')
         if flags['saturated']:
             log.write('saturated')
-            thresh = 252
+            thresh = slimit-5
         else:
             thresh = 210
         try:
@@ -61,6 +61,25 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
 
             ### get ROI 
             ROI = getROI(orig,cEdge,stingEdge,draw=draw,plot=plot)
+
+            ### try to correct corners
+            try:
+                cutoff = 15
+
+                if flowRight:
+                    if edges[1][-1,0,0]>edges[0][-1,0,0]:
+                        cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
+                        edges = (cn,stingc)
+                else:
+                    if edges[1][-1,0,0]<edges[0][-1,0,0]:
+                        cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
+                        edges = (cn,stingc)
+                if draw:
+                    cv.drawContours(orig, cn, -1, (0,0,255), 1)
+                flags["cornerFailed"] = False
+            except:
+                flags["cornerFailed"] = True
+                log.write('corner correction failed')
         except:
             log.write('failed GRAY edge detection')
             return None
@@ -69,11 +88,11 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
         try:
             ### Extract HSV contours
             if flags['overexp']:
-                minHue=95;maxHue=123
+                minHue=95;maxHue=140
             elif flags['underexp']:
                 minHue=75;maxHue=170
             else:
-                minHue=100;maxHue=130
+                minHue=110;maxHue=140
             
             c,stingc = contoursHSV(orig,plot=plot,draw=True,log=log,
                                    minHue=minHue,maxHue=maxHue,
@@ -101,9 +120,9 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
             if not flags['saturated']:
                 try:
                     if flags['underexp']:
-                        cutoff = 35
+                        cutoff = 25
                     else:
-                        cutoff = 50
+                        cutoff = 35
 
                     if flowRight:
                         if edges[1][-1,0,0]>edges[0][-1,0,0]:
@@ -115,7 +134,9 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
                             edges = (cn,stingc)
                     if draw:
                         cv.drawContours(orig, cn, -1, (0,0,255), 1)
+                    flags["cornerFailed"] = False
                 except:
+                    flags["cornerFailed"] = True
                     log.write('corner correction failed')
         except TypeError: # catch when return type is None
             log.write('failed HSV edge detection')
