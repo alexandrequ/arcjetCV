@@ -24,22 +24,51 @@ IHF338Run006_WestView_1, 1, round, overexp/underexp/saturated
 IHF338Run006_WestView_2, 2, round, overexp
 IHF338Run006_WestView_3, 2, round, overexp
 
+### AHF335Run001_EastView_2_edges
+slope: 0.012898 +- 0.000387, 0.000000 R
+recession: 0.147677 +- 0.018391, 0.000000 R
+### AHF335Run001_EastView_3_edges
+slope: 0.012190 +- 0.000485, 0.000000 R
+recession: 0.138717 +- 0.018018, 0.000000 R
+### AHF335Run001_EastView_4_edges
+slope: 0.012755 +- 0.000299, 0.000000 R
+recession: 0.145040 +- 0.018307, 0.000000 R
+### AHF335Run001_EastView_5_edges
+slope: 0.013092 +- 0.000249, 0.000000 R
+recession: 0.158686 +- 0.018141, 0.000000 R
+
+### AHF335Run002_EastView_1_edges
+slope: 0.056371 +- 0.001008, 0.000000 R
+recession: 0.105931 +- 0.038835, 0.000000 R
 
 ### IHF338Run005_WestView_1_edges
-slope: 0.219237 +- 0.004199, 0.000000 R
-recession: 0.286835 +- 0.027730, 0.000000 R
+slope: 0.115895 +- 0.005543, 0.000000 R
+recession: 0.151630 +- 0.013962, 0.000000 R
 ### IHF338Run005_WestView_2_edges
-slope: 0.245459 +- 0.001322, 0.000000 R
-recession: 0.321142 +- 0.028070, 0.000000 R
+slope: 0.126152 +- 0.002322, 0.000000 R
+recession: 0.165049 +- 0.014035, 0.000000 R
 ### IHF338Run005_WestView_3_edges
-slope: 0.242994 +- 0.001447, 0.000000 R
-recession: 0.317917 +- 0.028021, 0.000000 R
+slope: 0.120386 +- 0.002859, 0.000000 R
+recession: 0.157505 +- 0.014011, 0.000000 R
+
 ### IHF338Run006_WestView_1_edges
-slope: 0.099276 +- 0.000312, 0.000000 R
-recession: 0.439709 +- 0.027972, 0.000000 R
+slope: 0.046733 +- 0.001385, 0.000000 R
+recession: 0.206987 +- 0.013986, 0.000000 R
 ### IHF338Run006_WestView_2_edges
-slope: 0.103612 +- 0.000189, 0.000000 R
-recession: 0.458485 +- 0.028319, 0.000000 R
+slope: 0.049482 +- 0.000498, 0.000000 R
+recession: 0.218958 +- 0.014159, 0.000000 R
 ### IHF338Run006_WestView_3_edges
-slope: 0.101185 +- 0.000211, 0.000000 R
-recession: 0.448164 +- 0.028120, 0.000000 R
+slope: 0.050640 +- 0.000382, 0.000000 R
+recession: 0.224294 +- 0.014060, 0.000000 R
+
+### IHF338Run003_WestView_1_edges
+slope: 0.051366 +- 0.006356, 0.000000 R
+recession: 0.066561 +- 0.026230, 0.000000 R
+### IHF338Run003_WestView_2_edges
+slope: 0.047602 +- 0.005072, 0.000000 R
+recession: 0.061883 +- 0.026230, 0.000000 R
+### IHF338Run003_WestView_3_edges
+too much variation in slope
+recession: 0.077209 +- 0.026230, 0.000000 R
+
+

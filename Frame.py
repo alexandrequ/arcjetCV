@@ -83,7 +83,6 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
                 log.write('corner correction failed')
         except:
             log.write('failed GRAY edge detection')
-            raise
             return None
     else:
         ### If sting not visible, model is isolated, use HSV
@@ -94,7 +93,7 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
             elif flags['underexp']:
                 minHue=75;maxHue=170
             else:
-                minHue=110;maxHue=140
+                minHue=85;maxHue=140
             
             c,stingc = contoursHSV(orig,plot=plot,draw=True,log=log,
                                    minHue=minHue,maxHue=maxHue,

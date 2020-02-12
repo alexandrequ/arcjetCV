@@ -9,18 +9,17 @@ from glob import glob
 
 folder = "video/IHF338/"
 
-mask = folder + 'IHF338Run003_WestView_2_edges.pkl'  # default
+mask = folder + 'IHF338Run004_EastView_3_edges.pkl'  # default
 paths = glob(mask)
-
 
 ### Units
 rnorms = [-.75,-.5,0,.5,0.75]
 rnorms = [0]
 labels = ['75% radius','50% radius','Apex','75% radius','50% radius']
-fps = 240
+fps = 30
 minArea = 1200
-sample_radius = 4 #inches
-skip=4
+sample_radius = 1 #inches
+skip=1
 PLOTXY=True;PLOTTIME=True;VERBOSE=True
 
 for path in paths:
@@ -83,14 +82,14 @@ for path in paths:
     if PLOTTIME:
         err= 2*np.ones(len(sec))*sample_radius/R_px
         inds = np.arange(0,len(sec))
-        err[inds>150] /= 10000.
+        err[inds>355] /= 10000.
         for i in range(0,len(rnorms)):
             plt.plot(sec,xpos[:,i],'o',label="%f"%rnorms[i])
             coeff,cov = np.polyfit(sec, xpos[:,i], 1,cov=True,w=1/err)
             dm = np.sqrt(cov[0,0])
-            plt.plot(sec,sec*coeff[0]+coeff[1],'-')
+            #plt.plot(sec,sec*coeff[0]+coeff[1],'-')
             dsec = (tf-t0)/fps
-            print("slope: %f +- %f, %f R"%(coeff[0],dm,rnorms[i]))
+            print("slope: %f +- %f, %f R"%(coeff[0],dm*6,rnorms[i]))
             print("recession: %f +- %f, %f R"%(dsec*coeff[0],2*sample_radius/R_px,rnorms[i]))
         plt.legend(loc=0)
         plt.show()
