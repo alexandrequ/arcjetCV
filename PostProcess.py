@@ -9,14 +9,14 @@ from glob import glob
 
 folder = "video/IHF338/"
 
-mask = folder + 'IHF338Run005_EastView*_edges.pkl'  # default
+mask = folder + 'IHF338Run005_WestView*_edges.pkl'  # default
 paths = glob(mask)
 
 ### Units
 rnorms = [-.75,-.5,0,.5,0.75]
 labels = ['75% radius','50% radius','Apex']
 fps = 240
-pxpi = 214
+sample_radius = 4 #inches
 x0 = 500
 ### Visualization
 PLOTXY  = True
@@ -42,8 +42,11 @@ for path in paths:
 
     R_px = dy.max()/2.
     
-    ### Filter by d/dt_area
-    goodinds = np.nonzero((abs(np.diff(area)) < 1200))[0]+1
+    ### Filter by area,time
+    finite_area = area > 1200
+    ddt_area = np.append(np.zeros(1),abs(np.diff(area)) < 1200)
+    
+    goodinds = np.nonzero(finite_area*ddt_area)[0]
     
     ### Loop through pickle file
     recess_pos =[]
@@ -55,32 +58,22 @@ for path in paths:
         x,y = xi-x0,yi-cy[ind]
 
         # interpolate desired radial positions
-        f = interp1d(y[2:-2], x[2:-2], kind='cubic')
-        
+        f = interp1d(y[2:-1], x[2:-1], kind='cubic')
         xi = f(np.array(rnorms)*R_px)
         recess_pos.append(xi)
         
-        if PLOTXY and (ind==goodinds[0] or ind==goodinds[-1]):
-            plt.plot(y,x,'o-')
+##        if PLOTXY and (ind==goodinds[0] or ind==goodinds[-1]):
+        plt.plot(y*sample_radius/R_px,x*sample_radius/R_px,'o-')            
 
     rp = np.array(recess_pos)
     if PLOTXY:
         for i in range(0,len(rnorms)):
             ys = rnorms[i]*R_px*np.ones(len(rp))
-            plt.plot(ys,rp[:,i],'x')
+            plt.plot(ys*sample_radius/R_px,rp[:,i]*sample_radius/R_px,'x')
         plt.show()
     if PLOTTIME:
         t = time[goodinds]
         for i in range(0,len(rnorms)):
-            plt.plot(t,rp[:,i]-rp[0,i],'-',label="%f"%rnorms[i])
+            plt.plot(t,rp[:,i]*sample_radius/R_px,'-',label="%f"%rnorms[i])
         plt.legend(loc=0)
         plt.show()
-
-
-def getRadialPoint(cx,cy, rnorm):
-    y = (cy[0])*rnorm
-    ind = np.where(cy<y)[0][0]
-    print(ind)
-    xp,yp = cx[ind],cy[ind]
-    return (xp,yp),ind
-

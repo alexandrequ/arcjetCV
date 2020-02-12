@@ -14,7 +14,7 @@ from glob import glob
 
 folder = "video/IHF338/"
 
-mask = folder + '*.mp4'  # default
+mask = folder + 'IHF338Run005_WestView*.mp4'  # default
 paths = glob(mask)
 
 for path in paths:    
@@ -24,7 +24,7 @@ for path in paths:
     cap = cv.VideoCapture(path)
     ret, frame = cap.read(); h,w,chan = np.shape(frame)
     WRITE_VIDEO = False
-    WRITE_PICKLE = True
+    WRITE_PICKLE = False# True
     SHOW_CV = True
     FIRST_FRAME = 200#+303
     MODELPERCENT = 0.005
@@ -73,9 +73,9 @@ for path in paths:
 
         if SHOW_CV:
             magnus =1
-##            cv.imshow(name,frame)
-##            if cv.waitKey(1) & 0xFF == ord('q'):
-##                break
+            cv.imshow(name,frame)
+            if cv.waitKey(1) & 0xFF == ord('q'):
+                break
         counter +=1
       
     # When everything done, release the capture
