@@ -20,6 +20,7 @@ fps = 30
 minArea = 1200
 sample_radius = 1 #inches
 skip=1
+fitindex = 355
 PLOTXY=True;PLOTTIME=True;VERBOSE=True
 
 for path in paths:
@@ -82,7 +83,7 @@ for path in paths:
     if PLOTTIME:
         err= 2*np.ones(len(sec))*sample_radius/R_px
         inds = np.arange(0,len(sec))
-        err[inds>355] /= 10000.
+        err[inds>fitindex] /= 10000.
         for i in range(0,len(rnorms)):
             plt.plot(sec,xpos[:,i],'o',label="%f"%rnorms[i])
             coeff,cov = np.polyfit(sec, xpos[:,i], 1,cov=True,w=1/err)

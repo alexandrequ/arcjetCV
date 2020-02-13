@@ -8,18 +8,17 @@ from scipy.interpolate import splev, splprep, interp1d
 from glob import glob
 
     
-def processEdgeFile(path,minArea, sample_radius=1.,fps=1.,
-                    skip=4, PLOTXY=True,PLOTTIME=True,VERBOSE=True):
-    pth, name, ext = splitfn(path)
-    '''
-    Returns in
-    units of sample radius
-    units of seconds
-    '''
-    fname = name+ext;print("### "+ name)
+def processModelProps(myc,rnorms, minArea=7000, sample_radius=1.,fps=1.,
+                      fitindex=4,skip=4,
+                      PLOTXY=False,PLOTTIME=False,VERBOSE=False):
+    """
+    Processes output of getModelProps to extract axial (horizontal) position,
+    of 
 
-    ### Load pickle file
-    fin = open(path,'rb');myc = np.array(pickle.load(fin));fin.close()
+    :param contour: opencv contour, shape(n,1,n)
+    :param ninterp: integer, number of interpolation points
+    :returns: output, interpolated contour positions
+    """
 
     ### Parse file
     t0,tf = myc[0,0],myc[-1,0]
@@ -49,7 +48,10 @@ def processEdgeFile(path,minArea, sample_radius=1.,fps=1.,
 
         # interpolate desired radial positions
         f = interp1d(y[2:-1], x[2:-1], kind='cubic')
-        xi = f(np.array(rnorms)*R_px)
+        try:
+            xi = f(np.array(rnorms)*R_px)
+        except:
+            xi = np.array(rnorms)*np.nan
         recess_pos.append(xi)
         
         if PLOTXY:
@@ -57,6 +59,9 @@ def processEdgeFile(path,minArea, sample_radius=1.,fps=1.,
 
     ### Cast list to array
     rp = np.array(recess_pos)
+    t = time[goodinds]
+    sec = (t-t0)/fps
+    xpos = rp*sample_radius/R_px
 
     ### remove >2 pixel jumps
     diff = abs(np.diff(rp,axis=0))>2
@@ -68,29 +73,44 @@ def processEdgeFile(path,minArea, sample_radius=1.,fps=1.,
             ys = rnorms[i]*R_px*np.ones(len(rp))
             plt.plot(ys*sample_radius/R_px,rp[:,i]*sample_radius/R_px,'x')
         plt.show()
+
     if PLOTTIME:
-        t = time[goodinds]
+        err= 2*np.ones(len(sec))*sample_radius/R_px
+        inds = np.arange(0,len(sec))
+        err[inds>fitindex] /= 10000.
         for i in range(0,len(rnorms)):
             plt.plot((t-t0)/fps,rp[:,i]*sample_radius/R_px,'-',label="%f"%rnorms[i])
-        plt.legend(loc=0)
+            coeff,cov = np.polyfit(sec, xpos[:,i], 1,cov=True,w=1/err)
+            dm = np.sqrt(cov[0,0])
+            plt.plot(sec,sec*coeff[0]+coeff[1],'-')
+            dsec = (tf-t0)/fps
+            print("slope: %f +- %f, %f R"%(coeff[0],dm*6,rnorms[i]))
+            print("recession: %f +- %f, %f R"%(dsec*coeff[0],2*sample_radius/R_px,rnorms[i]))
+            plt.legend(loc=0)
         plt.show()
 
-    return (t-t0)/fps,rp*sample_radius/R_px
+    return sec,xpos
 
 if __name__ == "__main__":
     folder = "video/IHF338/"
 
-    mask = folder + 'IHF338Run001_WestView*_edges.pkl'  # default
+    mask = folder + 'IHF338Run004_WestView_?_edges.pkl'  # default
     paths = glob(mask)
 
-    ### Units
-    rnorms = [-.75,-.5,0,.5,0.75]
-    labels = ['75% radius','50% radius','Apex']
-    fps = 240
+    ### PostProcess inputs
+    rnorms = [0]
+    fps = 30
     minArea = 7000
     sample_radius = 4 #inches
+    skip = 4
+    fitindex = 150
     
     for path in paths:
-        t,rp = processEdgeFile(path,minArea,
-                               fps=fps,sample_radius=4.,
-                               PLOTXY=True,PLOTTIME=True,VERBOSE=True)
+        pth, name, ext = splitfn(path)
+        fname = name+ext;print("### "+ name)
+
+        ### Load pickle file
+        fin = open(path,'rb');myc = np.array(pickle.load(fin));fin.close()
+        t,rp = processModelProps(myc,rnorms,minArea=minArea,fps=fps,
+                                 sample_radius=4.,fitindex=fitindex,
+                                PLOTXY=True,PLOTTIME=True,VERBOSE=True)
