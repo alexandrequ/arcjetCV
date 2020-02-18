@@ -1,8 +1,7 @@
 import numpy as np
 import cv2 as cv
-from Frame import getModelProps
-from Functions import classifyImageHist
-from Calibrate import splitfn
+from classes.Frame import getModelProps
+from classes.Calibrate import splitfn
 import matplotlib.pyplot as plt
 from glob import glob
 
@@ -14,7 +13,7 @@ from glob import glob
 
 folder = "video/IHF338/"
 
-mask = folder + '*.mp4'  # default
+mask = folder + '*004_WestView_1.mp4'  # default
 paths = glob(mask)
 
 for path in paths:    
@@ -26,7 +25,7 @@ for path in paths:
     WRITE_VIDEO = False
     WRITE_PICKLE = True
     SHOW_CV = True
-    FIRST_FRAME = 1300#+303
+    FIRST_FRAME = 300#+303
     MODELPERCENT = 0.005
 
 
@@ -90,4 +89,4 @@ for path in paths:
         pickle.dump(myc,fout)
         fout.close()
 
-    #input("Next video?")
+    input("Next video?")
