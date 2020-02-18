@@ -13,7 +13,7 @@ from glob import glob
 
 folder = "video/IHF338/"
 
-mask = folder + '*004_WestView_1.mp4'  # default
+mask = folder + '*004_WestView_?.mp4'  # default
 paths = glob(mask)
 
 for path in paths:    
@@ -23,7 +23,7 @@ for path in paths:
     cap = cv.VideoCapture(path)
     ret, frame = cap.read(); h,w,chan = np.shape(frame)
     WRITE_VIDEO = False
-    WRITE_PICKLE = True
+    WRITE_PICKLE = False
     SHOW_CV = True
     FIRST_FRAME = 300#+303
     MODELPERCENT = 0.005
@@ -89,4 +89,4 @@ for path in paths:
         pickle.dump(myc,fout)
         fout.close()
 
-    input("Next video?")
+    #input("Next video?")

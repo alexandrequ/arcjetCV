@@ -1,0 +1,30 @@
+File inputs
+    mask -> paths
+    frameID
+
+Contour inputs
+    modelpercent
+    stingpercent
+    contourChoice('default','GRAY','HSV')
+    flowRight ('left','right')
+    hueMin (75,85,95), hueMax (121,140,170)
+    intensityMin, intensityMax 
+    cornerCutoff (15,25,35)
+    
+Feedback options
+    annotate
+    draw
+    verbose
+    
+PostProcess options
+    rnorms (-.75,-.5,0,.5,.75)
+    fps
+    minArea = 1200
+    sample_radius = 2 #inches
+    skip=1
+    fitindex = 355
+    
+    PLOTXY
+    PLOTTIME
+    VERBOSE
+

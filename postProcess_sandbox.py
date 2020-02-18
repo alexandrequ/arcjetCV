@@ -2,14 +2,14 @@ import numpy as np
 import cv2 as cv
 import pickle
 import matplotlib.pyplot as plt
-from Functions import smooth,interpolateContour
-from Calibrate import splitfn
+from classes.Functions import smooth,interpolateContour
+from classes.Calibrate import splitfn
 from scipy.interpolate import splev, splprep, interp1d
 from glob import glob
 
 folder = "video/IHF338/"
 
-mask = folder + 'IHF338Run005_WestView_3_edges.pkl'  # default
+mask = folder + 'IHF338Run004_WestView_?_edges.pkl'  # default
 paths = glob(mask)
 
 ### Units

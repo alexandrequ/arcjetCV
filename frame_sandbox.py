@@ -2,10 +2,11 @@ import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-from Frame import getModelProps,annotateImage
-from Functions import *
+from classes.Frame import getModelProps,annotateImage
+from classes.Functions import *
 
-fname = 'sample5.png'
+folder = "frames/"
+fname = folder+'sample5.png'
 orig = cv.imread(fname,1)
 ##img = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
 ##histr = cv.calcHist( [img], None, None, [256], (0, 256));
@@ -21,7 +22,7 @@ orig = cv.imread(fname,1)
 ##print(flowRight)
 
 gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
-flags = classifyImageHist(gray)
+flags = classifyImageHist(gray)[0]
 sobelx = cv.Sobel(gray,cv.CV_64F,1,0,ksize=1)
 abs_sobel64f = np.absolute(sobelx)
 sobel_8u = np.uint8(abs_sobel64f)
