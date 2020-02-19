@@ -95,16 +95,21 @@ def getOrientation(contour):
     
     return th,cx,cy,(x,y,w,h),flowRight
 
-def classifyImageHist(gray,verbose=False,stingpercent=.05,modelpercent=.005):
+def classifyImageHist(img,verbose=False,stingpercent=.05,modelpercent=.005):
     """
     Uses histogram of 8bit grayscale image (0,255) to classify image type
 
-    :param gray: opencv image
+    :param img: opencv image
     :param verbose: boolean
     :param stingpercent: minimum percent area of sting arm
     :param modelpercent: minimum percent area of model
     :returns: dictionary of flags
     """
+    ### HSV brightness value histogram
+    hsv_ = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+    hsv_=cv.GaussianBlur(hsv_, (5, 5), 0)
+    gray = hsv_[:,:,2]
+
     ### grayscale histogram
     histr = cv.calcHist( [gray], None, None, [256], (0, 256));
     imgsize = gray.size
@@ -116,16 +121,25 @@ def classifyImageHist(gray,verbose=False,stingpercent=.05,modelpercent=.005):
     overexp = histr[243:].sum()/imgsize > modelpercent
     underexp= histr[150:].sum()/imgsize < modelpercent
 
+    ### Determine saturation limit
     slimit,peaki=253,240
     if overexp:
         peaki = histr[240:].argmax() +240
         if histr[peaki:].sum()/imgsize > modelpercent:
             slimit = peaki-1
-        
     saturated = histr[slimit:].sum()/imgsize > modelpercent
-    
+
+    ### Extract intensity threshold
+    try:
+        exp_val = (histr[30:].ravel()*np.arange(30,256)).sum()/histr[30:].sum()
+        avg = int(max(exp_val,55))
+        peaki = histr[avg:].argmax() +avg
+        thresh = max(histr[avg:peaki].argmin() +avg, peaki-15)
+    except:
+        thresh = 150
+        
     if verbose:
-        print('peaki, slimit', peaki,slimit)
+        print('peaki, slimit, thresh', peaki,slimit,thresh)
         print("Model visible",modelvis)
         print("Sting visible",stingvis)
         print("overexposed", overexp)
@@ -140,7 +154,7 @@ def classifyImageHist(gray,verbose=False,stingpercent=.05,modelpercent=.005):
             'saturated':saturated,
             'stingvis':stingvis,
             'modelvis':modelvis,
-            }, slimit
+            }, thresh
 
 def analyzeCenterlineHSV(cl):
     H,S,V = cl[:,0],cl[:,1],cl[:,2]
@@ -215,7 +229,7 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
 
 def contoursHSV(orig,draw=False,plot=False,log=None,
                 minHue=95,maxHue=121,flags=None,
-                modelpercent=.005):
+                modelpercent=.005,intensityMin=None):
     """
     Find contours for good images and underexposed images.
     Uses the BGR-HSV transformation twice to increase edge contrast.
@@ -236,16 +250,12 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
     hsv_=cv.GaussianBlur(hsv_, (5, 5), 0)
     inten = hsv_[:,:,2]
     histr = cv.calcHist( [inten], None, None, [256], (0, 256))
-    if (flags is not None) and flags['overexp']:
-        peaki = min(max(150, histr[150:].argmax()+150),210)
-    else:
-        peaki = min(max(30, histr[35:].argmax()+35),210)        
 
-    minHSV = (int(minHue),0,int(peaki-10))
+    minHSV = (int(minHue),0,int(intensityMin))
     maxHSV = (int(maxHue),255,255)
 
-    stingMinHSV = (minHue-35,0,55)
-    stingMaxHSV = (maxHue+30,255,255)
+    stingMinHSV = (int(minHue)-35,0,55)
+    stingMaxHSV = (int(maxHue)+30,255,255)
     
     hsv = cv.cvtColor(hsv_, cv.COLOR_RGB2HSV)
     npx = inten.size
@@ -253,25 +263,20 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
     # retrieve original hsv intensity
     hsv[:,:,2] = inten
 
-    # plot hue histogram
-    if plot:
-        plt.figure()    
-        plt.title("Hue Histogram")
-        plt.plot(histr/npx,'-')
-        plt.ylim([0,modelpercent/2])
-        plt.show()
-
     # Plot colorspaces
     if plot:
         print("min max HSV: ", minHSV,maxHSV)
         plt.figure(figsize=(8, 16))
         rgb = orig[...,::-1].copy()
-        plt.subplot(3,1,1),plt.imshow(rgb)
+        plt.subplot(2,2,1),plt.imshow(rgb)
         plt.title('RGB colorspace')
-        plt.subplot(3,1,2),plt.imshow(hsv_)
+        plt.subplot(2,2,2),plt.imshow(hsv_)
         plt.title('HSV colorspace')
-        plt.subplot(3,1,3),plt.imshow(hsv)
+        plt.subplot(2,2,3),plt.imshow(hsv)
         plt.title('HSV-sq colorspace')
+        plt.subplot(2,2,4),plt.plot(histr/npx)
+        plt.ylim([0,modelpercent/2])
+        plt.title("Hue Histogram")
         plt.tight_layout()
         plt.show()
     ### Find model contours

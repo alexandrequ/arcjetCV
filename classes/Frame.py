@@ -6,11 +6,11 @@ from classes.Functions import contoursGRAY,contoursHSV,combineEdges
 from classes.Functions import getConvexHull,getEdgeFromContour
 
 class Logger(object):
-    def __init__(self,filename,prefix=''):
+    def __init__(self,filename,PRINT=True,FILEIO=False,prefix=''):
         self.filename=filename
         self.prefix = prefix
-        self.print = True
-        self.fileio = False
+        self.print = PRINT
+        self.fileio = FILEIO
         
     def write(self,line):
         if self.print:
@@ -19,17 +19,27 @@ class Logger(object):
             fh = open(self.filename,'a')
             fh.write(self.prefix+line.__str__()+'\n')
             fh.close()
+##    modelpercent
+##    stingpercent
+##    contourChoice('default','GRAY','HSV')
+##    flowRight ('left','right')
+##    hueMin (75,85,95), hueMax (121,140,170)
+##    intensityMin, intensityMax 
+##    cornerCutoff (15,25,35)
 
 def getModelProps(orig,frameID,log=None,plot=False,draw=True,
-                  verbose=False,annotate=True,modelpercent=.005):
+                  verbose=False,annotate=True,modelpercent=.005,
+                  stingpercent=.05,contourChoice='default',flowDirection=None,
+                  minHue=None,maxHue=None,intensityMin=None,intensityMax=None,
+                  cornerCutoff=None):
     ### Initialize logfile
     if log is None:
-        log = Logger('getModelProps.log')
-    log.prefix = "%s: "%str(frameID)
+        log = Logger('getModelProps.log',prefix="%s: "%str(frameID))
 
     ### Classify image
-    gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
-    flags,slimit = classifyImageHist(gray,verbose=verbose,modelpercent=modelpercent)
+    flags,thresh = classifyImageHist(orig,verbose=verbose,
+                                     modelpercent=modelpercent,
+                                     stingpercent=stingpercent)
     if verbose:
         log.write(flags)
 
@@ -37,112 +47,103 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
     if flags['modelvis'] == False:
         return None
 
-    ### Sting is visible, image is bright, use grayscale countours
-
-    if flags['saturated'] or flags['stingvis']:
-        log.write('overexposed')
-        if flags['saturated']:
-            log.write('saturated')
-            thresh = slimit-5
+    ### Set contour type
+    if contourChoice=='default':
+        ### Sting is visible, image is bright, use grayscale countours
+        if flags['saturated'] or flags['stingvis']:
+            contourChoice = 'GRAY'
         else:
-            thresh = 230
-        try:
-            ### Extract grayscale contours
-            c,stingc = contoursGRAY(orig,thresh,log=log,plot=plot)
+            contourChoice = 'HSV'
 
-            ### Estimate orientation, center of mass
-            th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
-            if draw:
-                cv.circle(orig,(int(cx),int(cy)),4,(0,255,0))
-            
-            ### get leading edges
-            cEdge = getEdgeFromContour(c,flowRight)
-            stingEdge= getEdgeFromContour(stingc,flowRight)
-            edges = (cEdge,stingEdge)
+    ### Set intensity limits
+    if intensityMin == None:
+        intensityMin = thresh
+    if flags['overexp']:
+        intensityMin = 230
+    if flags['saturated']:
+        intensityMin = 243
+    if flags['underexp']:
+        intensityMin = max(80,min(thresh,200))
+    if intensityMax == None:
+        intensityMax = 255
 
-            ### get ROI 
-            ROI = getROI(orig,cEdge,stingEdge,draw=draw,plot=plot)
+    #print(slimit, "%f intensityMin"%intensityMin)
+    ### Set hue limits
+    if minHue == None or maxHue == None:
+        ### HSV default params
+        if flags['overexp']:
+            minHue=95;maxHue=140
+        elif flags['underexp']:
+            minHue=75;maxHue=170
+        else:
+            minHue=85;maxHue=140
 
-            ### try to correct corners
-            try:
-                cutoff = 15
-
-                if flowRight:
-                    if edges[1][-1,0,0]>edges[0][-1,0,0]:
-                        cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
-                        edges = (cn,stingc)
-                else:
-                    if edges[1][-1,0,0]<edges[0][-1,0,0]:
-                        cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
-                        edges = (cn,stingc)
-                if draw:
-                    cv.drawContours(orig, cn, -1, (0,0,255), 1)
-                flags["cornerFailed"] = False
-            except:
-                flags["cornerFailed"] = True
-                log.write('corner correction failed')
-        except:
-            log.write('failed GRAY edge detection')
-            return None
-    else:
-        ### If sting not visible, model is isolated, use HSV
-        try:
-            ### Extract HSV contours
-            if flags['overexp']:
-                minHue=95;maxHue=140
-            elif flags['underexp']:
-                minHue=75;maxHue=170
-            else:
-                minHue=85;maxHue=140
-            
+    ### Set corner cutoff limits
+    if cornerCutoff == None:
+        if flags['underexp']:
+            cornerCutoff = 25
+        elif flags['overexp']:
+            cornerCutoff = 15
+        else:
+            cornerCutoff = 35
+        
+    ### Extract contours
+    try:
+        if contourChoice == 'GRAY' or contourChoice == 'GREY':
+            c,stingc = contoursGRAY(orig,intensityMin,log=log,
+                                    draw=True,plot=plot)
+        else:
             c,stingc = contoursHSV(orig,plot=plot,draw=True,log=log,
-                                   minHue=minHue,maxHue=maxHue,
+                                   minHue=minHue,maxHue=maxHue,intensityMin=intensityMin,
                                    modelpercent=modelpercent,flags=flags)
+    except:
+        log.write('failed contour%s edge detection'%contourChoice)
+        return None        
 
-            ### Estimate orientation, center of mass
-            th,cx,cy,(x,y,w,h),flowRight = getOrientation(stingc)
-            if draw:
-                cv.circle(orig,(int(cx),int(cy)),4,(0,255,0))
+    ### Get contour moments
+    try:
+        ### Estimate orientation, center of mass
+        th,cx,cy,(x,y,w,h),flowRight = getOrientation(c)
+        if draw:
+            cv.circle(orig,(int(cx),int(cy)),4,(0,255,0))
+    except:
+        log.write('failed contour moment calculation')
+        return None
 
-            ### Apply convex hull if underexposed
-            if not flags['overexp']:
-                #log.write('underexposed, imposed convex hull')
-                c = getConvexHull(c,min(len(c),1000),flowRight)
-                stingc = getConvexHull(stingc,len(stingc),flowRight)
-            ### get leading edges
-            cEdge = getEdgeFromContour(c,flowRight)
-            stingEdge= getEdgeFromContour(stingc,flowRight)
-            edges = (cEdge,stingEdge)
+    ### Determine flow direction
+    if flowDirection == 'left':
+        flowRight = False
+    elif flowDirection == 'right':
+        flowRight = True
 
-            ### get ROI 
-            ROI = getROI(orig,cEdge,stingEdge,draw=draw,plot=False)
-            
-            ### try to correct corners
-            if not flags['saturated']:
-                try:
-                    if flags['underexp']:
-                        cutoff = 25
-                    else:
-                        cutoff = 35
+    ### Get leading edges & ROI
+    try:
+        cEdge = getEdgeFromContour(c,flowRight)
+        stingEdge= getEdgeFromContour(stingc,flowRight)
+        edges = (cEdge,stingEdge)
 
-                    if flowRight:
-                        if edges[1][-1,0,0]>edges[0][-1,0,0]:
-                            cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
-                            edges = (cn,stingc)
-                    else:
-                        if edges[1][-1,0,0]<edges[0][-1,0,0]:
-                            cn = combineEdges(edges[0],edges[1],cutoff=cutoff)
-                            edges = (cn,stingc)
-                    if draw:
-                        cv.drawContours(orig, cn, -1, (0,0,255), 1)
-                    flags["cornerFailed"] = False
-                except:
-                    flags["cornerFailed"] = True
-                    log.write('corner correction failed')
-        except TypeError: # catch when return type is None
-            log.write('failed HSV edge detection')
-            return None
-
+        ROI = getROI(orig,cEdge,stingEdge,draw=draw,plot=plot)
+        flags["EdgeExtractionFailed"] = False
+    except:
+        flags["EdgeExtractionFailed"] = True
+        log.write('front edge extraction failed')
+    ### try to correct corners
+    try:
+        if flowRight:
+            if edges[1][-1,0,0]>edges[0][-1,0,0]+5:
+                cn = combineEdges(edges[0],edges[1],cutoff=cornerCutoff)
+                edges = (cn,stingc)
+        else:
+            if edges[1][-1,0,0]<edges[0][-1,0,0]-5:
+                cn = combineEdges(edges[0],edges[1],cutoff=cornerCutoff)
+                edges = (cn,stingc)
+        if draw:
+            cv.drawContours(orig, cn, -1, (0,0,255), 1)
+        flags["cornerFailed"] = False
+    except:
+        flags["cornerFailed"] = True
+        log.write('corner correction failed')
+        
     if annotate:
         annotateImage(orig,flags)
     if plot:

@@ -18,7 +18,7 @@ rnorms = [-.75,-.5,0,.5,0.75]
 labels = ['75% radius','50% radius','Apex','75% radius','50% radius']
 fps = 30
 minArea = 1200
-sample_radius = 2 #inches
+sample_radius = 1 #inches
 skip=1
 fitindex = 355
 PLOTXY=True;PLOTTIME=True;VERBOSE=True

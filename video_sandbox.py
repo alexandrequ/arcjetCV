@@ -5,16 +5,32 @@ from classes.Calibrate import splitfn
 import matplotlib.pyplot as plt
 from glob import glob
 
-##folder = "video/AHF/"
+
 ##fname = "AHF335Run001_EastView_1.mp4"
-##folder = "video/IHF360/"
 ##fname = "IHF360-005_EastView_3_HighSpeed.mp4"
 ##fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 
-folder = "video/IHF338/"
+#folder = "video/AHF335/"
 
-mask = folder + '*004_WestView_?.mp4'  # default
+folder = "video/IHF360/"
+mask = folder + "IHF360-005_EastView_3_HighSpeed.mp4"
+
+folder = "video/IHF338/"
+mask = folder + "*006_EastView_1.mp4"  # default
+
 paths = glob(mask)
+
+WRITE_VIDEO = False
+WRITE_PICKLE = False
+SHOW_CV = True
+FIRST_FRAME = 310#+303
+MODELPERCENT = 0.005
+CC = 'default'
+fD = 'right'
+iMin = None#150
+iMax = None#255
+hueMin = None#75#95
+hueMax = None#170#140
 
 for path in paths:    
     pth, name, ext = splitfn(path)
@@ -22,12 +38,6 @@ for path in paths:
 
     cap = cv.VideoCapture(path)
     ret, frame = cap.read(); h,w,chan = np.shape(frame)
-    WRITE_VIDEO = False
-    WRITE_PICKLE = False
-    SHOW_CV = True
-    FIRST_FRAME = 300#+303
-    MODELPERCENT = 0.005
-
 
     if WRITE_VIDEO:
         vid_cod = cv.VideoWriter_fourcc('m','p','4','v')
@@ -56,7 +66,9 @@ for path in paths:
             verbose=True
             
         ret = getModelProps(frame,counter,draw=draw,plot=plot,verbose=verbose,
-                            modelpercent=MODELPERCENT)
+                            modelpercent=MODELPERCENT,contourChoice=CC,
+                            flowDirection=fD,intensityMin=iMin,intensityMax=iMax,
+                            minHue=hueMin,maxHue=hueMax)
 
         if ret != None:
             (c,stingc), ROI, (th,cx,cy), flowRight,flags = ret
