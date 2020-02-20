@@ -18,19 +18,25 @@ mask = folder + "IHF360-005_EastView_3_HighSpeed.mp4"
 folder = "video/IHF338/"
 mask = folder + "*006_EastView_1.mp4"  # default
 
+folder = "video/HyMETS/"
+mask = folder + "PS12*.mp4"  # default
+
 paths = glob(mask)
 
 WRITE_VIDEO = False
 WRITE_PICKLE = False
 SHOW_CV = True
-FIRST_FRAME = 310#+303
-MODELPERCENT = 0.005
-CC = 'default'
-fD = 'right'
-iMin = None#150
+FIRST_FRAME = 0#+303
+LAST_FRAME = 2706
+
+MODELPERCENT = 0.012
+STINGPERCENT = 0.5
+CC = 'HSV'
+fD = 'left'
+iMin = 150
 iMax = None#255
-hueMin = None#75#95
-hueMax = None#170#140
+hueMin = 60#95
+hueMax = 170#140
 
 for path in paths:    
     pth, name, ext = splitfn(path)
@@ -66,8 +72,9 @@ for path in paths:
             verbose=True
             
         ret = getModelProps(frame,counter,draw=draw,plot=plot,verbose=verbose,
-                            modelpercent=MODELPERCENT,contourChoice=CC,
-                            flowDirection=fD,intensityMin=iMin,intensityMax=iMax,
+                            modelpercent=MODELPERCENT,stingpercent=STINGPERCENT,
+                            contourChoice=CC,flowDirection=fD,
+                            intensityMin=iMin,intensityMax=iMax,
                             minHue=hueMin,maxHue=hueMax)
 
         if ret != None:
