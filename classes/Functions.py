@@ -134,8 +134,12 @@ def classifyImageHist(img,verbose=False,stingpercent=.05,modelpercent=.005):
         exp_val = (histr[30:].ravel()*np.arange(30,256)).sum()/histr[30:].sum()
         avg = int(max(exp_val,55))
         peaki = histr[avg:].argmax() +avg
-        thresh = max(histr[avg:peaki].argmin() +avg, peaki-15)
+        if abs(peaki-avg) < 10:
+            thresh=peaki-15
+        else:
+            thresh = max(histr[avg:peaki].argmin() +avg, peaki-15)
     except:
+        #raise
         thresh = 150
         
     if verbose:
@@ -252,10 +256,10 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
     histr = cv.calcHist( [inten], None, None, [256], (0, 256))
 
     minHSV = (int(minHue),0,int(intensityMin))
-    maxHSV = (int(maxHue),255,255)
+    maxHSV = (int(maxHue),252,255)
 
-    stingMinHSV = (int(minHue)-35,0,55)
-    stingMaxHSV = (int(maxHue)+30,255,255)
+    stingMinHSV = (int(minHue)-35,0,int(intensityMin/3.))
+    stingMaxHSV = (int(maxHue)+30,253,255)
     
     hsv = cv.cvtColor(hsv_, cv.COLOR_RGB2HSV)
     npx = inten.size

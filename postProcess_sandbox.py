@@ -8,8 +8,11 @@ from scipy.interpolate import splev, splprep, interp1d
 from glob import glob
 
 folder = "video/IHF338/"
-
 mask = folder + 'IHF338Run004_WestView_?_edges.pkl'  # default
+
+folder = "video/HyMETS/"
+mask = folder + '*.pkl'  # default
+
 paths = glob(mask)
 
 ### Units
@@ -20,7 +23,7 @@ fps = 30
 minArea = 1200
 sample_radius = 1 #inches
 skip=1
-fitindex = 355
+fitindex = 0
 PLOTXY=True;PLOTTIME=True;VERBOSE=True
 
 for path in paths:

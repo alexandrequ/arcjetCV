@@ -58,12 +58,12 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
     ### Set intensity limits
     if intensityMin == None:
         intensityMin = thresh
-    if flags['overexp']:
-        intensityMin = 230
-    if flags['saturated']:
-        intensityMin = 243
-    if flags['underexp']:
-        intensityMin = max(80,min(thresh,200))
+        if flags['overexp']:
+            intensityMin = 230
+        if flags['saturated']:
+            intensityMin = 243
+        if flags['underexp']:
+            intensityMin = max(80,min(thresh,200))
     if intensityMax == None:
         intensityMax = 255
 
@@ -81,7 +81,7 @@ def getModelProps(orig,frameID,log=None,plot=False,draw=True,
     ### Set corner cutoff limits
     if cornerCutoff == None:
         if flags['underexp']:
-            cornerCutoff = 25
+            cornerCutoff = 50
         elif flags['overexp']:
             cornerCutoff = 15
         else:
