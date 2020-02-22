@@ -232,8 +232,8 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
     return c,stingc
 
 def contoursHSV(orig,draw=False,plot=False,log=None,
-                minHue=95,maxHue=121,flags=None,
-                modelpercent=.005,intensityMin=None):
+                minHue=65,maxHue=141,flags=None,
+                modelpercent=.005,intensityMin=165):
     """
     Find contours for good images and underexposed images.
     Uses the BGR-HSV transformation twice to increase edge contrast.
@@ -255,8 +255,20 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
     inten = hsv_[:,:,2]
     histr = cv.calcHist( [inten], None, None, [256], (0, 256))
 
+##    sobelx = cv.Sobel(inten,cv.CV_64F,1,0,ksize=1)
+##    abs_sobel64f = np.absolute(sobelx)
+##    sobel_8u = np.uint8(abs_sobel64f)
+##    sobel_norm = cv.normalize(sobel_8u, None, 0,15,norm_type=cv.NORM_MINMAX)
+    
+##    plt.figure()
+##    plt.subplot(2,1,1),plt.imshow(inten)
+##    plt.subplot(2,1,2),plt.imshow(inten + sobel_norm)
+##    plt.show()
+    
+    
+
     minHSV = (int(minHue),0,int(intensityMin))
-    maxHSV = (int(maxHue),252,255)
+    maxHSV = (int(maxHue),255,255)
 
     stingMinHSV = (int(minHue)-35,0,int(intensityMin/3.))
     stingMaxHSV = (int(maxHue)+30,253,255)
@@ -323,6 +335,32 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
         plt.figure(figsize=(8, 16))
         rgb = orig[...,::-1].copy()
         plt.subplot(2,1,1),plt.imshow(rgb)
+        plt.title('RGB colorspace')
+        plt.subplot(2,1,2),plt.imshow(hsv)
+        plt.title('HSV-sq colorspace')
+        plt.tight_layout()
+        plt.show()
+    
+    return c,stingc
+
+def contourSobel(orig,threshold=0.25,
+                 draw=False,plot=False,log=None,flags=None):
+    # Load an color image in grayscale, apply Sobel transform
+    gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
+
+    sobelx = cv.Sobel(gray,cv.CV_64F,1,0,ksize=2)
+    abs_sobel64f = np.absolute(sobelx)
+    #edges = cv.Canny(abs_sobel64f,100,200)
+    
+    xpos = np.argmax(abs_sobel64f,axis=1)
+    ypos = 1
+    
+
+    # Plot colorspaces
+    if plot:
+        plt.figure(figsize=(8, 16))
+        plt.subplot(2,1,1),plt.imshow(orig)
+        plt.subplot(2,1,2),plt.imshow(sobel_norm)
         plt.title('RGB colorspace')
         plt.subplot(2,1,2),plt.imshow(hsv)
         plt.title('HSV-sq colorspace')

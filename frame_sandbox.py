@@ -6,7 +6,7 @@ from classes.Frame import getModelProps,annotateImage
 from classes.Functions import *
 
 folder = "frames/"
-fname = folder+'sample5.png'
+fname = folder+'sample10.png'
 orig = cv.imread(fname,1)
 ##img = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
 ##histr = cv.calcHist( [img], None, None, [256], (0, 256));
@@ -23,7 +23,9 @@ orig = cv.imread(fname,1)
 
 gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
 flags = classifyImageHist(orig)[0]
-sobelx = cv.Sobel(gray,cv.CV_64F,1,0,ksize=1)
+
+edges = cv.Canny(gray,0,100)
+sobelx = cv.Sobel(gray,cv.CV_64F,1,0,ksize=3)
 abs_sobel64f = np.absolute(sobelx)
 sobel_8u = np.uint8(abs_sobel64f)
 plt.figure();plt.imshow(sobelx,cmap = 'gray');plt.show()

@@ -16,8 +16,8 @@ mask = folder+ "AHF335Run001_EastView_1.mp4"
 ##folder = "video/IHF360/"
 ##mask = folder + "IHF360-005_EastView_3_HighSpeed.mp4"
 
-##folder = "video/IHF338/"
-##mask = folder + "*006_EastView_1.mp4"  # default
+folder = "video/IHF338/"
+mask = folder + "*006_EastView_1.mp4"  # default
 
 ##folder = "video/HyMETS/"
 ##mask = folder + "PS12*.mp4"  # default
