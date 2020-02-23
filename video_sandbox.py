@@ -10,33 +10,33 @@ from glob import glob
 ##fname = "IHF360-005_EastView_3_HighSpeed.mp4"
 ##fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 
-#folder = "video/AHF335/"
+folder = "video/"
+mask = folder+ "AHF335Run001_EastView_1.mp4"
 
-folder = "video/IHF360/"
-mask = folder + "IHF360-005_EastView_3_HighSpeed.mp4"
+##folder = "video/IHF360/"
+##mask = folder + "IHF360-005_EastView_3_HighSpeed.mp4"
 
-folder = "video/IHF338/"
-mask = folder + "*006_EastView_1.mp4"  # default
+##folder = "video/IHF338/"
+##mask = folder + "*006_EastView_1.mp4"  # default
 
-folder = "video/HyMETS/"
-mask = folder + "PS12*.mp4"  # default
+##folder = "video/HyMETS/"
+##mask = folder + "PS12*.mp4"  # default
 
 paths = glob(mask)
 
 WRITE_VIDEO = False
 WRITE_PICKLE = False
 SHOW_CV = True
-FIRST_FRAME = 0#+303
-LAST_FRAME = 2706
+FIRST_FRAME = 900#+303
 
 MODELPERCENT = 0.012
 STINGPERCENT = 0.5
-CC = 'HSV'
-fD = 'left'
-iMin = 150
+CC = 'default'
+fD = 'right'
+iMin = None#150
 iMax = None#255
-hueMin = 60#95
-hueMax = 170#140
+hueMin = None#95
+hueMax = None#140
 
 for path in paths:    
     pth, name, ext = splitfn(path)

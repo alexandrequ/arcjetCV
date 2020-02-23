@@ -22,7 +22,7 @@ orig = cv.imread(fname,1)
 ##print(flowRight)
 
 gray = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
-flags = classifyImageHist(gray)[0]
+flags = classifyImageHist(orig)[0]
 sobelx = cv.Sobel(gray,cv.CV_64F,1,0,ksize=1)
 abs_sobel64f = np.absolute(sobelx)
 sobel_8u = np.uint8(abs_sobel64f)
