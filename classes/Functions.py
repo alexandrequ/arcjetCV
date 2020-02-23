@@ -131,7 +131,8 @@ def classifyImageHist(img,verbose=False,stingpercent=.05,modelpercent=.005):
 
     ### Extract intensity threshold
     try:
-        exp_val = (histr[30:].ravel()*np.arange(30,256)).sum()/histr[30:].sum()
+        total = histr[30:].sum()+1
+        exp_val = (histr[30:].ravel()*np.arange(30,256)).sum()/total
         avg = int(max(exp_val,55))
         peaki = histr[avg:].argmax() +avg
         if abs(peaki-avg) < 10:
@@ -139,7 +140,6 @@ def classifyImageHist(img,verbose=False,stingpercent=.05,modelpercent=.005):
         else:
             thresh = max(histr[avg:peaki].argmin() +avg, peaki-15)
     except:
-        #raise
         thresh = 150
         
     if verbose:
