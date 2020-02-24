@@ -29,7 +29,7 @@ def process(img, filters):
         np.maximum(accum, fimg, accum)
     return accum
 
-def TextureFilter(img,params=None):
+def textureFilter(img,params=None):
     if params is None:
         x= [9,12,2.906,3.485,.47]
     else:
@@ -38,10 +38,8 @@ def TextureFilter(img,params=None):
                             lmbda=x[3],gamma=x[4],psi=0)
     res1 = process(img, filters)
     return res1
- 
-if __name__ == "__main__":
 
-    filemask = "ms_8ply_000?.tif"
+def fitTextureParams(filemask):
     paths = glob(filemask)
     fits = []
     for path in paths:
@@ -58,26 +56,58 @@ if __name__ == "__main__":
 
         def getContrast(x):
             ### Apply Gabor filters
-            res1 = TextureFilter(img,x)
+            res1 = textureFilter(img,x)
             
             bres = cv.bitwise_and(res1,res1,mask=b)
             gres = cv.bitwise_and(res1,res1,mask = g)
             rres = cv.bitwise_and(res1,res1,mask = r)
 
             bavg,gavg = bres.sum()/bpx, gres.sum()/gpx
-            return (bavg - gavg)
+            return 1/(bavg - gavg)
 
-##        x0 = np.array([9,12,2.906,3.485,.47])
-##        minmodel = minimize(getContrast, x0, method='nelder-mead',
-##                            options={'xatol': 1e-8, 'disp': True})
-##        print(minmodel.x)
-##        fits.append(minmodel.x)
-##        x = minmodel.x
+        x0 = np.array([9,12,2.906,3.485,.47])
+        minmodel = minimize(getContrast, x0, method='nelder-mead',
+                            options={'xatol': 1e-8, 'disp': True})
+        print(minmodel.x)
+        fits.append(minmodel.x)
+    return fits
 
+if __name__ == "__main__":
+
+    filemask = "ms_8ply_000?.tif"
+    paths = glob(filemask)
+
+    for path in paths:
+        pth, name, ext = splitfn(path)
+        print(name)
+
+        ### Read in images
+        img = cv.imread(name+'.tif',0)
+        mask = cv.imread(name+'.png')
+        
         x = np.array([9,12,2.9,3.48,.47])
-        print(getContrast(x))
-        res1 = TextureFilter(img,x)
+        texture = textureFilter(img,x)
+        texture = cv.medianBlur(texture, 5, 0)
+
+        ### noise removal
+        stexture = cv.GaussianBlur(texture, (3, 3), 0)
+        stexture = cv.GaussianBlur(stexture, (3, 3), 0)
+
+        ### Threshold
+        th1 = cv.inRange(texture,205,255,cv.THRESH_BINARY)
+        th1 = cv.medianBlur(th1, 3, 0)
+##        th1 = cv.GaussianBlur(th1, (3, 3), 0)
+##        th1 = cv.inRange(th1,150,255,cv.THRESH_BINARY)
+##        th1 = cv.medianBlur(th1, 7, 0)
+
+        ### Erode & dialate to remove fluff
+        kernel1 = np.ones((5,5), dtype=np.uint8)
+        eroded = cv.erode(th1, kernel1)
+
+        kernel2 = np.ones((2,2), dtype=np.uint8)
+        dist = cv.dilate(eroded, kernel2)
+        
         #res1 = entropy(img, disk(4))
-        plt.imshow(res1)
+        plt.imshow(dist)
         plt.show()
 

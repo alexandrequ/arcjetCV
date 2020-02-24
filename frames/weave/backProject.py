@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 from glob import glob
 
 folder = "./"
-mask = folder + "ms_8ply_0000.tif"  # default
+mask = folder + "ms_8ply_000?.tif"  # default
 
 paths = glob(mask)
 
 for path in paths:
-    roi = cv.imread('inplane_1.tif',0)
+    roi = cv.imread('outplane_1.tif',0)
     target = cv.imread(path)
 
     # plot image, roi
@@ -29,7 +29,7 @@ for path in paths:
     plt.show()
     
     # Now convolute with circular disc
-    disc = cv.getStructuringElement(cv.MORPH_ELLIPSE,(7,7))
+    disc = cv.getStructuringElement(cv.MORPH_ELLIPSE,(5,5))
     cv.filter2D(dst,-1,disc,dst)
 
     plt.imshow(dst)
