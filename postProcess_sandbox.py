@@ -9,20 +9,21 @@ from glob import glob
 
 folder = "video/IHF338/"
 mask = folder + 'IHF338Run004_WestView_3_edges.pkl'  # default
+flowDirection = 'right'
 
-##folder = "video/HyMETS/"
-##mask = folder + 'PS12*.pkl'  # default
+folder = "video/HyMETS/"
+mask = folder + 'PS07*.pkl'  # default
+flowDirection = 'left'
 
 paths = glob(mask)
 
 ### Units
 rnorms = [-.75,-.5,0,.5,0.75]
-rnorms = [0]
+#rnorms = [0]
 labels = ['75% radius','50% radius','Apex','75% radius','50% radius']
-fps = 30
+fps = 240
 minArea = 1200
-flowDirection = 'right'
-sample_radius = 1 #inches
+sample_radius = 23.2156 #mm
 skip=1
 fitindex = 0
 PLOTXY=True;PLOTTIME=True;VERBOSE=True
@@ -133,6 +134,6 @@ for path in paths:
         plt.show()
     if WRITETOFILE:
         np.savetxt(name+'.csv',xpos,delimiter=',',header = str(rnorms)[1:-1])
-        np.savetxt(name+'_cy.csv',cy,delimiter=',',header = str(rnorms)[1:-1])
-        np.savetxt(name+'_time.csv',t-t0,delimiter=',',header = str(rnorms)[1:-1])
+        np.savetxt(name+'_cy.csv',cy,delimiter=',',header = "vertical pos (px)")
+        np.savetxt(name+'_time.csv',t-t0,delimiter=',',header = "frame number")
 
