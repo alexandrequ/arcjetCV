@@ -5,9 +5,6 @@ from matplotlib import pyplot as plt
 from scipy.optimize import minimize
 from glob import glob
 
-from skimage.filters.rank import entropy
-from skimage.morphology import disk
-
 def splitfn(fn):
     path, fn = os.path.split(fn)
     name, ext = os.path.splitext(fn)
@@ -37,7 +34,15 @@ def textureFilter(img,params=None):
     filters = build_filters(ksize=int(x[0]),nangles=int(x[1]),sigma=x[2],
                             lmbda=x[3],gamma=x[4],psi=0)
     res1 = process(img, filters)
-    return res1
+    
+    ### noise removal
+    texture = cv.medianBlur(res1, 5, 0)
+    stexture = cv.GaussianBlur(texture, (5, 5), 0)
+
+    ### Threshold
+    th1 = cv.inRange(stexture,200,255,cv.THRESH_BINARY)
+    th1 = cv.medianBlur(th1, 11, 0)
+    return th1
 
 def fitTextureParams(filemask):
     paths = glob(filemask)
@@ -72,6 +77,7 @@ def fitTextureParams(filemask):
         fits.append(minmodel.x)
     return fits
 
+PLOT=False
 if __name__ == "__main__":
 
     filemask = "ms_8ply_000?.tif"
@@ -81,33 +87,78 @@ if __name__ == "__main__":
         pth, name, ext = splitfn(path)
         print(name)
 
-        ### Read in images
+        ### Read in image
         img = cv.imread(name+'.tif',0)
-        mask = cv.imread(name+'.png')
-        
-        x = np.array([9,12,2.9,3.48,.47])
-        texture = textureFilter(img,x)
-        texture = cv.medianBlur(texture, 5, 0)
 
+        #####################################################################
+        ###Filter for background
+        roi = cv.imread('outplane_1.tif',0)
+        # calculating object histogram
+        roihist = cv.calcHist([roi],None, None, [256], (0, 256) )
+        bgrd = cv.calcBackProject([img],[0],roihist,[0,256],1)
+        # Now convolute with circular disc
+        disc = cv.getStructuringElement(cv.MORPH_ELLIPSE,(5,5))
+        cv.filter2D(bgrd,-1,disc,bgrd)
+
+        # threshold and binary AND
+        thresh = cv.inRange(bgrd,0,50,0)
         ### noise removal
-        stexture = cv.GaussianBlur(texture, (3, 3), 0)
-        stexture = cv.GaussianBlur(stexture, (3, 3), 0)
+        th_bgrd = cv.medianBlur(thresh, 11, 0)
 
-        ### Threshold
-        th1 = cv.inRange(texture,205,255,cv.THRESH_BINARY)
-        th1 = cv.medianBlur(th1, 3, 0)
-##        th1 = cv.GaussianBlur(th1, (3, 3), 0)
-##        th1 = cv.inRange(th1,150,255,cv.THRESH_BINARY)
-##        th1 = cv.medianBlur(th1, 7, 0)
+        if PLOT:
+            plt.imshow(th_bgrd)
+            plt.show()
+        
+        #####################################################################
+        ### Filter for warp
+        x = np.array([9,12,2.9,3.48,.4])
+        th1 = textureFilter(img,x)
 
         ### Erode & dialate to remove fluff
         kernel1 = np.ones((5,5), dtype=np.uint8)
         eroded = cv.erode(th1, kernel1)
 
-        kernel2 = np.ones((2,2), dtype=np.uint8)
-        dist = cv.dilate(eroded, kernel2)
+        kernel2 = np.ones((3,3), dtype=np.uint8)
+        th_warp = cv.dilate(eroded, kernel2)
+
+        if PLOT:
+            plt.imshow(th_warp)
+            plt.show()
+        #####################################################################
+        ### Filter for weft
+        th_weft = cv.bitwise_and(255-th_warp,255-th_bgrd)
+        ### noise removal
+        th_weft = cv.medianBlur(th_weft, 11, 0)
+
+        if PLOT:
+            plt.imshow(th_weft)
+            plt.show()
+
+##        #####################################################################
+##        ### Compare with mask
+##        mask = cv.imread(name+'.png')
+##        b,g,r = cv.split(mask)
+##        bpx,gpx,rpx = cv.countNonZero(b),cv.countNonZero(g),cv.countNonZero(r)
+##        compare = cv.bitwise_and(th_weft,g,mask=g)
+##        
+##        print(compare.sum()/gpx/255)
+##        plt.figure()
+##        plt.subplot(211);plt.imshow(th_weft)
+##        plt.subplot(212);plt.imshow(g)
+##        plt.show()
+
+        ### export to file
+        h,w = np.shape(img)
+        new_img = np.zeros([h,w,3])
+
+        new_img[:,:,0] = th_warp
+        new_img[:,:,1] = img
+        new_img[:,:,2] = th_bgrd
         
-        #res1 = entropy(img, disk(4))
-        plt.imshow(dist)
-        plt.show()
+        cv.imwrite(name+"_preproc"+'.png', new_img)
+
+        if PLOT:
+            plt.imshow(new_img.astype(int))
+            plt.show()
+        
 
