@@ -10,33 +10,39 @@ from glob import glob
 ##fname = "IHF360-005_EastView_3_HighSpeed.mp4"
 ##fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 
-folder = "video/"
-mask = folder+ "AHF335Run001_EastView_1.mp4"
+##folder = "video/AHF335/"
+##mask = folder + "AHF335Run001_EastView_1.mp4"
 
-##folder = "video/IHF360/"
+##folder = "../video/IHF360/"
 ##mask = folder + "IHF360-005_EastView_3_HighSpeed.mp4"
 
-##folder = "video/IHF338/"
-##mask = folder + "*006_EastView_1.mp4"  # default
+folder = "../video/IHF338/"
+mask = folder + "*004_WestView_3.mp4"  # default
 
-##folder = "video/HyMETS/"
+##folder = "../video/HyMETS/"
 ##mask = folder + "PS12*.mp4"  # default
 
 paths = glob(mask)
 
-WRITE_VIDEO = False
+WRITE_VIDEO = True
 WRITE_PICKLE = False
 SHOW_CV = True
-FIRST_FRAME = 900#+303
+FIRST_FRAME = 310#+303
+LAST_FRAME = 2706
 
-MODELPERCENT = 0.012
+MODELPERCENT = 0.005
 STINGPERCENT = 0.5
 CC = 'default'
 fD = 'right'
-iMin = None#150
+iMin = None
 iMax = None#255
-hueMin = None#95
-hueMax = None#140
+hueMin = 60#95
+hueMax = 170#140
+
+myr = np.loadtxt('IHF338Run004_WestView_3_edges.csv',delimiter=',')
+mcy = np.loadtxt('IHF338Run004_WestView_3_edges_cy.csv',delimiter=',')
+myt = np.loadtxt('IHF338Run004_WestView_3_edges_time.csv',delimiter=',')
+t0= 310
 
 for path in paths:    
     pth, name, ext = splitfn(path)
@@ -47,13 +53,13 @@ for path in paths:
 
     if WRITE_VIDEO:
         vid_cod = cv.VideoWriter_fourcc('m','p','4','v')
-        output = cv.VideoWriter(folder+"edit_"+fname[0:-4]+'.m4v', vid_cod, 100.0,(w,h))
+        output = cv.VideoWriter(folder+"edit_"+fname[0:-4]+'.avi', vid_cod, 30.0,(720+360,h))
         
     nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
     fps = cap.get(cv.CAP_PROP_FPS)
     cap.set(cv.CAP_PROP_POS_FRAMES,FIRST_FRAME);
     counter=FIRST_FRAME
-    myc=[]
+    myc,yt,centery=[],[],[]
     while(True):
         # Capture frame-by-frame
         ret, frame = cap.read()
@@ -82,16 +88,44 @@ for path in paths:
             (xb,yb,wb,hb) = cv.boundingRect(c)
             area = cv.contourArea(c)
             cv.rectangle(frame,(xb,yb,wb,hb),(255,255,255),3)
-            cv.drawContours(frame, c, -1, (0,255,255), 3)
+            cv.drawContours(frame, c, -1, (0,0,255), 2)
 
             ### Save contours and useful parameters
             myc.append([counter,cy,hb,area,c,flags])
-        if WRITE_VIDEO:
-            output.write(frame)
 
-        if SHOW_CV:
-            magnus =1
-            cv.imshow(name,frame)
+        my_dpi = 100
+        print(counter-310)
+        if (myt == counter-310).any():
+            i, = np.where(myt == counter-310)[0]
+            plt.figure(figsize=(360/my_dpi, 720/my_dpi), dpi=my_dpi)
+            plt.subplot(211)
+            plt.plot((myt[0:i])/30,myr[0:i],'r^')
+            plt.xlim([0,11])
+            plt.ylabel('Recession (in)')
+            
+            plt.subplot(212)
+            plt.xlim([0,11])
+            mytime = range(0,int(myt[i])+1)
+            yt.append((counter-310)/30); centery.append(720-cy)
+            plt.plot(yt,centery,'b-')
+            plt.ylabel('Vertical position (px)')
+            plt.xlabel('Time (s)')
+            plt.tight_layout()
+            plt.savefig('my_fig_%i.png'%counter, dpi=my_dpi)
+            plt.close()
+            myplot  = cv.imread('my_fig_%i.png'%counter,1)
+            hp,wp,chanp = np.shape(myplot)
+            vis = np.concatenate((frame[:,0:720,:], myplot), axis=1)
+        
+            if WRITE_VIDEO:
+                output.write(vis)
+
+            if SHOW_CV:
+                cv.imshow(name,vis)
+                if cv.waitKey(1) & 0xFF == ord('q'):
+                    break
+        else:
+            #cv.imshow(name,frame)
             if cv.waitKey(1) & 0xFF == ord('q'):
                 break
         counter +=1

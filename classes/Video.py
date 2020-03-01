@@ -86,7 +86,7 @@ def getVideoProps(path,FIRST_FRAME=0,WRITE_VIDEO=False,
 
 
 if __name__ == "__main__":
-    folder = "../video/"
+    folder = "../../video/"
     mask = folder+ "AHF335Run001_EastView_1.mp4"
 
     paths = glob(mask)
