@@ -24,13 +24,9 @@ import os
 import sys
 import getopt
 from glob import glob
+from Functions import splitfn
 
-# local functions
-def splitfn(fn):
-    path, fn = os.path.split(fn)
-    name, ext = os.path.splitext(fn)
-    return path, name, ext
-
+### calibration functions
 def processImage(fn,debug_dir='./output/'):
     print('processing %s... ' % fn)
     img = cv.imread(fn, 0)

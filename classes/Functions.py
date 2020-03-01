@@ -1,7 +1,13 @@
 import numpy as np
 import cv2 as cv
+import os
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
+
+def splitfn(fn):
+    path, fn = os.path.split(fn)
+    name, ext = os.path.splitext(fn)
+    return path, name, ext
 
 def interpolateContour(contour,ninterp,kind='linear'):
     """
