@@ -49,8 +49,8 @@ class StartWindow(QMainWindow):
             (c,stingc), ROI, (th,cx,cy), flowRight,flags = ret
             (xb,yb,wb,hb) = cv.boundingRect(c)
             area = cv.contourArea(c)
-            cv.rectangle(frame,(xb,yb,wb,hb),(255,255,255),3)
-            cv.drawContours(frame, c, -1, (0,255,255), 3)
+            cv.rectangle(frame,(xb,yb,wb,hb),(255,255,255),1)
+            cv.drawContours(frame, c, -1, (0,255,255), 1)
             
         nframe = cv.cvtColor(frame,cv.COLOR_BGR2RGB)
         self.image_view.setImage(cv.transpose(nframe,nframe))
@@ -106,6 +106,7 @@ class VideoThread(QThread):
                 cv.rectangle(frame,(xb,yb,wb,hb),(255,255,255),3)
                 cv.drawContours(frame, c, -1, (0,255,255), 3)
                 self.updateImage.emit()
+            
                 
 if __name__ == "__main__":
     import sys
