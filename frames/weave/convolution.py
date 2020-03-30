@@ -77,7 +77,7 @@ def fitTextureParams(filemask):
         fits.append(minmodel.x)
     return fits
 
-PLOT=False
+PLOT=True
 if __name__ == "__main__":
 
     filemask = "ms_8ply_000?.tif"
