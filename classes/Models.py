@@ -1,6 +1,6 @@
 import cv2 as cv
 import numpy as np
-from Functions import splitfn      
+from classes.Functions import splitfn      
 
 class Video(object):
     def __init__(self, path):

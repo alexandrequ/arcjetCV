@@ -43,14 +43,14 @@ class StartWindow(QMainWindow):
         frame = self.video.get_frame(self.frame_index.value())
 
         ret = getModelProps(frame,self.frame_index.value(),
-                            contourChoice='default',flowDirection='left')
+                            contourChoice='default',flowDirection='right')
 
         if ret != None:
             (c,stingc), ROI, (th,cx,cy), flowRight,flags = ret
             (xb,yb,wb,hb) = cv.boundingRect(c)
             area = cv.contourArea(c)
-            cv.rectangle(frame,(xb,yb,wb,hb),(255,255,255),3)
-            cv.drawContours(frame, c, -1, (0,255,255), 3)
+            cv.rectangle(frame,(xb,yb,wb,hb),(255,255,255),1)
+            cv.drawContours(frame, c, -1, (0,255,255), 1)
             
         nframe = cv.cvtColor(frame,cv.COLOR_BGR2RGB)
         self.image_view.setImage(cv.transpose(nframe,nframe))
@@ -97,7 +97,7 @@ class VideoThread(QThread):
         for i in range(self.start_ind,self.stop_ind):
             
             frame = self.video.get_frame(i)
-            ret = getModelProps(frame,i,contourChoice='default',flowDirection='left')
+            ret = getModelProps(frame,i,contourChoice='default',flowDirection='right')
 
             if ret != None:
                 (c,stingc), ROI, (th,cx,cy), flowRight,flags = ret
@@ -106,6 +106,7 @@ class VideoThread(QThread):
                 cv.rectangle(frame,(xb,yb,wb,hb),(255,255,255),3)
                 cv.drawContours(frame, c, -1, (0,255,255), 3)
                 self.updateImage.emit()
+            
                 
 if __name__ == "__main__":
     import sys
@@ -117,8 +118,9 @@ if __name__ == "__main__":
     sys.excepthook = exception_hook
     
     path = "/home/magnus/Desktop/arcjetCV/video/"
+    path = "/u/wk/mhaw/arcjetCV/video/"
     fname = "AHF335Run001_EastView_1.mp4"
-    fname = "IHF360-005_EastView_3_HighSpeed.mp4"
+    #fname = "IHF360-005_EastView_3_HighSpeed.mp4"
     video = Video(path+fname)
     app = QApplication([])
     window = StartWindow(video)
