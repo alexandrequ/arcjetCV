@@ -5,21 +5,23 @@ import matplotlib.pyplot as plt
 from glob import glob
 
 folder = "./"
-fnames = folder + "ILPreTest-75um*.JPG"  # default
+prefix = "A1-10mil-57um"
+fnames = folder + prefix + ".JPG"  # default
 r1,r2 = 25,143
+
+r1,r2 = 30,406
 
 paths = glob(fnames)
 
 folder = "./templates/"
-toes = glob(folder + "*toe*.jpg")
-warps = glob(folder + "*warp*.jpg")
+toes = glob(folder + prefix + "*toe*.jpg")
 
 def splitfn(fn):
     path, fn = os.path.split(fn)
     name, ext = os.path.splitext(fn)
     return path, name, ext
 
-def multiTemplateCorr(src, temps, srcThresh=50, iters=1):
+def multiTemplateCorr(src, temps, srcThresh=95, iters=1):
     out = np.ones(np.shape(src))
     for temp in temps:
         #edge padding sizes
@@ -35,28 +37,23 @@ def multiTemplateCorr(src, temps, srcThresh=50, iters=1):
 
     return out.astype(np.uint8)
 
-def postProcessCorr(src,iterations=5):
+def postProcessCorr(src,iterations=3,CLAHE=True):
     # renormalize histogram
-    #clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     for i in range(0,iterations):    
         out = (src.astype(np.float32))**2
         out = cv.normalize(out,None,0,255,cv.NORM_MINMAX)
-        out = cv.equalizeHist(out.astype(np.uint8))
-        out[out==255] =0
+        out = clahe.apply(out.astype(np.uint8))
+    out = cv.equalizeHist(out.astype(np.uint8))
     return out
 
 toe_temps=[]
 for toe in toes:
     toe_temps.append(cv.imread(toe,0))
 
-warp_temps=[]
-for warp in warps:
-    warp_temps.append(cv.imread(warp,0))
-
 for path in paths:
     rawimage = cv.imread(path,0)
-##    plt.imshow(rawimage)
-##    plt.show()
+    plt.imshow(rawimage)
+    plt.show()
 
     ### Region of interest
     roi0 = rawimage.copy()[r1:r2,:]
@@ -68,9 +65,9 @@ for path in paths:
     clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     roi_eq = clahe.apply(roi)
 
-##    plt.figure()
-##    plt.imshow(toe_temps[1])
-##    plt.show()
+    plt.figure()
+    plt.imshow(roi_eq)
+    plt.show()
 
     ### Apply template correlation 
     dst = multiTemplateCorr(roi_eq, toe_temps)
@@ -92,14 +89,14 @@ for path in paths:
     params.blobColor =255
     
     # Change thresholds
-    params.minThreshold = 200;
+    params.minThreshold = 100;
     params.maxThreshold = 255;
-    params.thresholdStep = 5;
+    params.thresholdStep = 2;
 
     # Filter by Area.
     params.filterByArea = True
-    params.minArea = 10
-    params.maxArea = 140
+    params.minArea = 5
+    params.maxArea = 50
 
     # Filter by Circularity
     params.filterByCircularity = False
@@ -110,11 +107,11 @@ for path in paths:
     params.minConvexity = 0.2
 
     # Filter by Inertia
-    params.filterByInertia = True
+    params.filterByInertia = False
     params.minInertiaRatio = 0.001
 
     # Min distance
-    params.minDistBetweenBlobs = 10
+    params.minDistBetweenBlobs = 6
 
     # Detect blobs
     detector = cv.SimpleBlobDetector_create(params)
@@ -132,3 +129,5 @@ for path in paths:
     plt.figure(9)
     plt.imshow(im_with_keypoints)
     plt.show()
+
+    
