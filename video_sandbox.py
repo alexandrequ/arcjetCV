@@ -1,3 +1,4 @@
+
 import numpy as np
 import cv2 as cv
 from classes.Frame import getModelProps
@@ -38,7 +39,7 @@ iMax = None#255
 hueMin = None#95
 hueMax = None#140
 
-for path in paths:    
+for path in paths:
     pth, name, ext = splitfn(path)
     fname = name+ext;print("### "+ name)
 
@@ -48,7 +49,7 @@ for path in paths:
     if WRITE_VIDEO:
         vid_cod = cv.VideoWriter_fourcc('m','p','4','v')
         output = cv.VideoWriter(folder+"edit_"+fname[0:-4]+'.m4v', vid_cod, 100.0,(w,h))
-        
+
     nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
     fps = cap.get(cv.CAP_PROP_FPS)
     cap.set(cv.CAP_PROP_POS_FRAMES,FIRST_FRAME);
@@ -60,7 +61,7 @@ for path in paths:
         if ret==False:
             print("No more frames")
             break
-        
+
         # Operations on the frame
         if SHOW_CV:
             draw = False
@@ -70,7 +71,7 @@ for path in paths:
             draw = True
             plot=True
             verbose=True
-            
+
         ret = getModelProps(frame,counter,draw=draw,plot=plot,verbose=verbose,
                             modelpercent=MODELPERCENT,stingpercent=STINGPERCENT,
                             contourChoice=CC,flowDirection=fD,
@@ -95,7 +96,7 @@ for path in paths:
             if cv.waitKey(1) & 0xFF == ord('q'):
                 break
         counter +=1
-      
+
     # When everything done, release the capture
     cap.release()
     if WRITE_VIDEO:

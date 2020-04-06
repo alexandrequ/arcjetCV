@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1098</width>
-    <height>615</height>
+    <width>1097</width>
+    <height>635</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +20,7 @@
       <x>10</x>
       <y>10</y>
       <width>1081</width>
-      <height>551</height>
+      <height>561</height>
      </rect>
     </property>
     <property name="currentIndex">
@@ -30,19 +30,6 @@
      <attribute name="title">
       <string>Extract Edges</string>
      </attribute>
-     <widget class="QGraphicsView" name="graphicsView">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>751</width>
-        <height>511</height>
-       </rect>
-      </property>
-      <property name="tabletTracking">
-       <bool>false</bool>
-      </property>
-     </widget>
      <widget class="QWidget" name="layoutWidget">
       <property name="geometry">
        <rect>
@@ -310,6 +297,35 @@
        </layout>
       </widget>
      </widget>
+     <widget class="QFrame" name="frame">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>40</y>
+        <width>751</width>
+        <height>471</height>
+       </rect>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+      <widget class="QLabel" name="label_img">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>731</width>
+         <height>451</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </widget>
     </widget>
     <widget class="QWidget" name="tab_2">
      <attribute name="title">
@@ -346,7 +362,7 @@
          <x>30</x>
          <y>30</y>
          <width>291</width>
-         <height>126</height>
+         <height>145</height>
         </rect>
        </property>
        <layout class="QFormLayout" name="formLayout_3">
@@ -460,8 +476,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1098</width>
-     <height>21</height>
+     <width>1097</width>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">

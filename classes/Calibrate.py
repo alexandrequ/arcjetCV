@@ -22,9 +22,10 @@ import cv2 as cv
 # built-in modules
 import os
 import sys
+sys.path.append('../')
 import getopt
 from glob import glob
-from Functions import splitfn
+from classes.Functions import splitfn
 
 ### calibration functions
 def processImage(fn,debug_dir='./output/'):
@@ -71,4 +72,3 @@ def getPose(fname,pattern,objp,mtx,dist):
     else:
         print("Could not find pattern corners :'(")
         return (False, False)
-        

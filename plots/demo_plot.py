@@ -1,5 +1,7 @@
 import numpy as np
 import cv2 as cv
+import sys
+sys.path.append('../')
 from classes.Frame import getModelProps
 from classes.Calibrate import splitfn
 import matplotlib.pyplot as plt
