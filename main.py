@@ -62,6 +62,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.show()
 
+        # Options
+        self.WRITE_VIDEO = self.ui.checkBox_writeVideo.isChecked()
+        self.WRITE_PICKLE = self.ui.checkBox_writePickle.isChecked()
+        self.SHOW_CV = True
+        self.FIRST_FRAME = 900#self.ui.spinBox_firstFrame.value() #900#+303
+        self.MODELPERCENT = 0.012#self.ui.spinBox_minArea.value() #0.012
+        self.STINGPERCENT = 0.5#self.ui.spinBox_minStingArea.value() #0.5
+        self.CC = str(self.ui.comboBox_filterType.currentText()) #'default'
+        self.FD = str(self.ui.comboBox_flowDirection.currentText())#'right'
+        self.iMin = None#self.ui.maxIntensity.value() #None#150
+        self.iMax = None#self.ui.maxIntensity.value() #None#255
+        self.hueMin = None#self.ui.minHue.value() #None#95
+        self.hueMax = None#self.ui.maxHue.value() #None#140
+
         self.ui.pushButton_runEdgesFullVideo.clicked.connect(self.run)
 
     def run(self):
@@ -133,6 +147,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.ui.label_img.setPixmap(pixmap_resize)
 
                     cv.imshow(name,frame)
+                    cv.destroyWindow(name)
                     if cv.waitKey(1) & 0xFF == ord('q'):
                         break
                 counter +=1
@@ -148,6 +163,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 fout = open(folder+fname[0:-4] +'_edges.pkl','wb')
                 pickle.dump(myc,fout)
                 fout.close()
+
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
