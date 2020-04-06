@@ -128,7 +128,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     image = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
                     qImg = QImage(image.data, w, h, step, QImage.Format_RGB888)
                     pixmap = QPixmap.fromImage(qImg)
-                    pixmap_resize = pixmap.scaled(731, 451, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    pixmap_resize = pixmap.scaled(731, 451, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
                     # show image in img_label
                     self.ui.label_img.setPixmap(pixmap_resize)
 
