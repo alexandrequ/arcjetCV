@@ -59,7 +59,7 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-
+        self.stop = False
         self.show()
 
         # Options
@@ -77,8 +77,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.hueMax = None#self.ui.maxHue.value() #None#140
 
         self.ui.pushButton_runEdgesFullVideo.clicked.connect(self.run)
+        self.ui.pushButton_stop.clicked.connect(self.stopRun)
 
     def run(self):
+
+        self.ui.pushButton_runEdgesFullVideo.hide()
+        self.ui.pushButton_stop.show()
 
         for path in paths:
             pth, name, ext = splitfn(path)
@@ -101,6 +105,11 @@ class MainWindow(QtWidgets.QMainWindow):
             counter=FIRST_FRAME
             myc=[]
             while(True):
+
+                if self.stop == True:
+                    print("hello")
+                    self.stop = False
+                    return
                 # Capture frame-by-frame
                 ret, frame = cap.read()
                 if ret==False:
@@ -164,6 +173,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 pickle.dump(myc,fout)
                 fout.close()
 
+    def stopRun(self):
+        self.stop = True
+        self.ui.pushButton_stop.hide()
+        self.ui.pushButton_runEdgesFullVideo.show()
 
 
 if __name__ == '__main__':
