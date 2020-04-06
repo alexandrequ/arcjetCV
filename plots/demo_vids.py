@@ -1,5 +1,7 @@
 import numpy as np
 import cv2 as cv
+import sys
+sys.path.append('../')
 from classes.Frame import getModelProps
 from classes.Calibrate import splitfn
 import matplotlib.pyplot as plt
@@ -44,7 +46,7 @@ mcy = np.loadtxt('IHF338Run004_WestView_3_edges_cy.csv',delimiter=',')
 myt = np.loadtxt('IHF338Run004_WestView_3_edges_time.csv',delimiter=',')
 t0= 310
 
-for path in paths:    
+for path in paths:
     pth, name, ext = splitfn(path)
     fname = name+ext;print("### "+ name)
 
@@ -54,7 +56,7 @@ for path in paths:
     if WRITE_VIDEO:
         vid_cod = cv.VideoWriter_fourcc('m','p','4','v')
         output = cv.VideoWriter(folder+"edit_"+fname[0:-4]+'.avi', vid_cod, 30.0,(720+360,h))
-        
+
     nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
     fps = cap.get(cv.CAP_PROP_FPS)
     cap.set(cv.CAP_PROP_POS_FRAMES,FIRST_FRAME);
@@ -66,7 +68,7 @@ for path in paths:
         if ret==False:
             print("No more frames")
             break
-        
+
         # Operations on the frame
         if SHOW_CV:
             draw = False
@@ -76,7 +78,7 @@ for path in paths:
             draw = True
             plot=True
             verbose=True
-            
+
         ret = getModelProps(frame,counter,draw=draw,plot=plot,verbose=verbose,
                             modelpercent=MODELPERCENT,stingpercent=STINGPERCENT,
                             contourChoice=CC,flowDirection=fD,
@@ -102,7 +104,7 @@ for path in paths:
             plt.plot((myt[0:i])/30,myr[0:i],'r^')
             plt.xlim([0,11])
             plt.ylabel('Recession (in)')
-            
+
             plt.subplot(212)
             plt.xlim([0,11])
             mytime = range(0,int(myt[i])+1)
@@ -116,7 +118,7 @@ for path in paths:
             myplot  = cv.imread('my_fig_%i.png'%counter,1)
             hp,wp,chanp = np.shape(myplot)
             vis = np.concatenate((frame[:,0:720,:], myplot), axis=1)
-        
+
             if WRITE_VIDEO:
                 output.write(vis)
 
@@ -129,7 +131,7 @@ for path in paths:
             if cv.waitKey(1) & 0xFF == ord('q'):
                 break
         counter +=1
-      
+
     # When everything done, release the capture
     cap.release()
     if WRITE_VIDEO:
