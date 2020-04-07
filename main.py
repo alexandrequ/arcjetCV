@@ -151,12 +151,11 @@ class MainWindow(QtWidgets.QMainWindow):
                     image = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
                     qImg = QImage(image.data, w, h, step, QImage.Format_RGB888)
                     pixmap = QPixmap.fromImage(qImg)
-                    pixmap_resize = pixmap.scaled(731, 451, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+                    self.pixmap_resize = pixmap.scaled(731, 451, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
                     # show image in img_label
-                    self.ui.label_img.setPixmap(pixmap_resize)
+                    self.ui.label_img.setPixmap(self.pixmap_resize)
+                    QApplication.processEvents() # update display 
 
-                    cv.imshow(name,frame)
-                    cv.destroyWindow(name)
                     if cv.waitKey(1) & 0xFF == ord('q'):
                         break
                 counter +=1
