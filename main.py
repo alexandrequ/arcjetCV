@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QImage
 from PyQt5.QtGui import QPixmap
+
 import numpy as np
 import cv2 as cv
 from classes.Frame import getModelProps
@@ -60,6 +61,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.stop = False
+        logo = QPixmap("gui/logo_arcjetCV.png")
+        logo = logo.scaledToHeight(451)
+        self.ui.label_img.setPixmap(logo)
         self.show()
 
         # Options
@@ -154,7 +158,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.pixmap_resize = pixmap.scaled(731, 451, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
                     # show image in img_label
                     self.ui.label_img.setPixmap(self.pixmap_resize)
-                    QApplication.processEvents() # update display 
+                    QApplication.processEvents() # update display
 
                     if cv.waitKey(1) & 0xFF == ord('q'):
                         break
