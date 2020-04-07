@@ -9,6 +9,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QIcon
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -150,6 +151,7 @@ class Ui_MainWindow(object):
         self.label_img = QtWidgets.QLabel(self.frame)
         self.label_img.setGeometry(QtCore.QRect(10, 10, 731, 451))
         self.label_img.setText("")
+        self.label_img.setAlignment(QtCore.Qt.AlignCenter)
         self.label_img.setObjectName("label_img")
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QtWidgets.QWidget()
@@ -252,6 +254,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "arcjetCV"))
+        MainWindow.setWindowIcon(QIcon('gui/logoE_arcjetCV.png'))
         self.pushButton_resetFrame.setText(_translate("MainWindow", "Reset frame"))
         self.pushButton_findEdges.setText(_translate("MainWindow", "Find Edges"))
         self.checkBox_writeVideo.setText(_translate("MainWindow", "Write video?"))
