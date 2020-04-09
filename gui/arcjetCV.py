@@ -8,6 +8,7 @@ realtime recession using openCV, Python, and PyQt5.
 """
 
 import sys
+import PyQt5
 from functools import partial
 
 # Import QApplication and the required widgets from PyQt5.QtWidgets
@@ -50,7 +51,7 @@ class arcUi(QMainWindow):
         self.display.setReadOnly(True)
         # Add the display to the general layout
         self.generalLayout.addWidget(self.display)
-        
+
     def setDisplayText(self, text):
         """Set display's text."""
         self.display.setText(text)
