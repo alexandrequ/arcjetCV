@@ -40,8 +40,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.show()
 
 
-        folder = "video/"
-        self.mask = folder+ "AHF335Run001_EastView_1.mp4"
+        self.folder = "video/"
+        self.mask = self.folder+ "AHF335Run001_EastView_1.mp4"
         self.paths = glob(self.mask)
 
         self.ui.pushButton_runEdgesFullVideo.clicked.connect(self.run)
@@ -80,7 +80,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             if self.WRITE_VIDEO:
                 vid_cod = cv.VideoWriter_fourcc('m','p','4','v')
-                output = cv.VideoWriter(folder+"edit_"+fname[0:-4]+'.m4v', vid_cod, 100.0,(w,h))
+                output = cv.VideoWriter(self.folder+"edit_"+fname[0:-4]+'.m4v', vid_cod, 100.0,(w,h))
 
             nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
             fps = cap.get(cv.CAP_PROP_FPS)
