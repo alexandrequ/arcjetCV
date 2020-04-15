@@ -117,7 +117,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                  intensityMin=self.iMin,intensityMax=self.iMax,
                                  minHue=self.hueMin,maxHue=self.hueMax)
 
-
+                cv.drawContours(self.frame, self.contours, -1, (0,96,196), 3)
 
                 if ret != None:
                     (c,stingc), ROI, (th,cx,cy), flowRight,flags = ret
@@ -195,8 +195,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.thresh = cv.erode(self.thresh, None, iterations=2)
         self.thresh = cv.dilate(self.thresh, None, iterations=4)
         edges = cv.Canny(self.thresh,200,100)
-        contours, hierarchy = cv.findContours(edges,  cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-        cv.drawContours(self.frame, contours, -1, (0,96,196), 3)
+        self.contours, hierarchy = cv.findContours(edges,  cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+        #cv.drawContours(self.frame, self.contours, -1, (0,96,196), 3)
         #cv.imshow("hello", frame)
 
     def clahe(self):
