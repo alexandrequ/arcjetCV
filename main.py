@@ -20,8 +20,10 @@ from PyQt5.QtGui import QPixmap
 
 import numpy as np
 import cv2 as cv
+
 from classes.Frame import getModelProps
 from classes.Calibrate import splitfn
+#from sandbox import bright
 import matplotlib.pyplot as plt
 from glob import glob
 
@@ -71,11 +73,9 @@ class MainWindow(QtWidgets.QMainWindow):
             pth, name, ext = splitfn(path)
             fname = name+ext;print("### "+ name)
 
-
-
             cap = cv.VideoCapture(path)
-            ret, frame = cap.read();
-            h,w,chan = np.shape(frame)
+            ret, self.frame = cap.read();
+            h,w,chan = np.shape(self.frame)
             step = chan * w
 
             if self.WRITE_VIDEO:
@@ -90,11 +90,10 @@ class MainWindow(QtWidgets.QMainWindow):
             while(True):
 
                 if self.stop == True:
-                    print("hello")
                     self.stop = False
                     return
                 # Capture frame-by-frame
-                ret, frame = cap.read()
+                ret, self.frame = cap.read()
                 if ret==False:
                     print("No more frames")
                     break
@@ -106,32 +105,36 @@ class MainWindow(QtWidgets.QMainWindow):
                     verbose=False
                 else:
                     draw = True
-                    plot=True
-                    verbose=True
+                    plot = True
+                    verbose = True
 
-                ret = getModelProps(frame,counter,draw=draw,plot=plot,verbose=verbose,
+
+                self.clahe()
+                self.gradient()
+                ret = getModelProps(self.frame,counter,draw=draw,plot=plot,verbose=verbose,
                                  modelpercent=self.MODELPERCENT,stingpercent=self.STINGPERCENT,
                                  contourChoice=self.CC,flowDirection=self.FD,
                                  intensityMin=self.iMin,intensityMax=self.iMax,
                                  minHue=self.hueMin,maxHue=self.hueMax)
 
+
+
                 if ret != None:
                     (c,stingc), ROI, (th,cx,cy), flowRight,flags = ret
                     (xb,yb,wb,hb) = cv.boundingRect(c)
                     area = cv.contourArea(c)
-                    cv.rectangle(frame,(xb,yb,wb,hb),(255,255,255),3)
-                    cv.drawContours(frame, c, -1, (0,255,255), 3)
+                    cv.rectangle(self.frame,(xb,yb,wb,hb),(255,255,255),3)
+                    cv.drawContours(self.frame, c, -1, (0,255,255), 3)
 
                     ### Save contours and useful parameters
                     myc.append([counter,cy,hb,area,c,flags])
                 if self.WRITE_VIDEO:
-                    output.write(frame)
+                    output.write(self.frame)
 
                 if self.SHOW_CV:
-                    magnus =1
 
                     # create QImage from image
-                    image = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+                    image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
                     qImg = QImage(image.data, w, h, step, QImage.Format_RGB888)
                     pixmap = QPixmap.fromImage(qImg)
                     self.pixmap_resize = pixmap.scaled(731, 451, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
@@ -166,6 +169,45 @@ class MainWindow(QtWidgets.QMainWindow):
         self.mask = dialog.getOpenFileName(None, "Select Video")
         self.paths = self.mask
         #script = "cp -r " + str(self.folder_path) + " " + str(path)
+
+    def bright(self):
+        gray = cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY)
+        blurred = cv.GaussianBlur(gray, (11, 11), 0)
+        # threshold the image to reveal light regions in the
+        # blurred image
+        self.thresh = cv.threshold(blurred, 250, 255, cv.THRESH_BINARY)[1]
+        # perform a series of erosions and dilations to remove
+        # any small blobs of noise from the thresholded image
+        self.thresh = cv.erode(self.thresh, None, iterations=2)
+        self.thresh = cv.dilate(self.thresh, None, iterations=4)
+        return self.thresh
+
+    def gradient(self):
+
+        gray = cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY)  # convert the image in gray
+        # create a CLAHE object (Arguments are optional).
+        #clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        #frame = clahe.apply(gray)
+        blurred = cv.GaussianBlur(gray, (11, 11), 0) # smoothing (blurring) it to reduce high frequency noise
+        self.thresh = cv.threshold(blurred, 250, 255, cv.THRESH_BINARY)[1] # threshold the image to reveal light regions in the
+        # perform a series of erosions and dilations to remove
+        # any small blobs of noise from the thresholded image
+        self.thresh = cv.erode(self.thresh, None, iterations=2)
+        self.thresh = cv.dilate(self.thresh, None, iterations=4)
+        edges = cv.Canny(self.thresh,200,100)
+        contours, hierarchy = cv.findContours(edges,  cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+        cv.drawContours(self.frame, contours, -1, (0,96,196), 3)
+        #cv.imshow("hello", frame)
+
+    def clahe(self):
+
+        lab = cv.cvtColor(self.frame, cv.COLOR_BGR2LAB)
+        lab_planes = cv.split(lab)
+        clahe = cv.createCLAHE(clipLimit=2.0,tileGridSize=(8,8))
+        lab_planes[0] = clahe.apply(lab_planes[0])
+        lab = cv.merge(lab_planes)
+        self.frame = cv.cvtColor(lab, cv.COLOR_LAB2BGR)
+        #cv.imshow("hello", bgr)
 
 
 if __name__ == '__main__':
