@@ -12,7 +12,7 @@ sys.path.append('../')
 # import some PyQt5 modules
 from gui.arcjetCV_gui import Ui_MainWindow
 from PyQt5 import QtWidgets
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QImage
@@ -36,7 +36,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.stop = False
-        logo = QPixmap("gui/arcjetCV_logo.png")
+        logo = QPixmap("logo/arcjetCV_logo.png")
         logo = logo.scaledToHeight(451)
         self.ui.label_img.setPixmap(logo)
         self.show()
@@ -207,7 +207,7 @@ class MainWindow(QtWidgets.QMainWindow):
         lab_planes[0] = clahe.apply(lab_planes[0])
         lab = cv.merge(lab_planes)
         self.frame = cv.cvtColor(lab, cv.COLOR_LAB2BGR)
-        #cv.imshow("hello", bgr)
+        cv.imshow("hello", self.frame)
 
 
 if __name__ == '__main__':

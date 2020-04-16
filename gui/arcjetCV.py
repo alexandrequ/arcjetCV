@@ -7,11 +7,12 @@ arcjetCV is a simple application which measures
 realtime recession using openCV, Python, and PyQt5.
 """
 
-import sys
+import sys, os
 import PyQt5
 from functools import partial
-
+sys.path.append('../')
 # Import QApplication and the required widgets from PyQt5.QtWidgets
+from PyQt5 import QtGui
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QMainWindow
@@ -33,6 +34,9 @@ class arcUi(QMainWindow):
         # Set some main window's properties
         self.setWindowTitle('arcjetCV')
         self.setFixedSize(235, 235)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("logo/arcjetCV_logo.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        MainWindow.setWindowIcon(icon)
         # Set the central widget and the general layout
         self.generalLayout = QVBoxLayout()
         self._centralWidget = QWidget(self)
