@@ -109,7 +109,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     verbose = True
 
 
-                self.clahe()
+
                 self.gradient()
                 ret = getModelProps(self.frame,counter,draw=draw,plot=plot,verbose=verbose,
                                  modelpercent=self.MODELPERCENT,stingpercent=self.STINGPERCENT,
@@ -134,7 +134,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 if self.SHOW_CV:
 
                     # create QImage from image
-                    image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
+                    #image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
+                    image = cv.cvtColor(self.frame, cv.COLOR_BGR2HSV)
+                    image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
                     qImg = QImage(image.data, w, h, step, QImage.Format_RGB888)
                     pixmap = QPixmap.fromImage(qImg)
                     self.pixmap_resize = pixmap.scaled(731, 451, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
@@ -208,6 +210,28 @@ class MainWindow(QtWidgets.QMainWindow):
         lab = cv.merge(lab_planes)
         self.frame = cv.cvtColor(lab, cv.COLOR_LAB2BGR)
         cv.imshow("hello", self.frame)
+
+    def fluxDirection(self, image)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (11,11), 0)
+        (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
+
+        # display the results of the naive attempt
+        cv2.imshow("Naive", image)
+
+
+        widthImg = image.shape[1]
+        widthLoc = maxLoc[1]
+
+        fluxLoc = widthLoc/widthImg
+
+        if fluxLoc > 0.5:
+        	fluxDirection = "left"
+        elif fluxLoc < 0.5:
+        	fluxDirection = "right"
+
+        print(fluxDirection)
+
 
 
 if __name__ == '__main__':
