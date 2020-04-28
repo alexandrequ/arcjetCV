@@ -109,7 +109,25 @@ class MainWindow(QtWidgets.QMainWindow):
                     verbose = True
 
 
+<<<<<<< HEAD
+                lab = cv.cvtColor(self.frame, cv.COLOR_BGR2LAB)
+                lab_planes = cv.split(lab)
+                clahe = cv.createCLAHE(clipLimit=2.0,tileGridSize=(8,8))
+                lab_planes[0] = clahe.apply(lab_planes[0])
+                lab = cv.merge(lab_planes)
+                bgr = cv.cvtColor(lab, cv.COLOR_LAB2BGR)
+
+                # Convert BGR to HSV
+
+                hsv = cv.cvtColor(bgr, cv.COLOR_BGR2HSV)
+                hsv = cv.cvtColor(hsv, cv.COLOR_BGR2HSV)
+
+                gray = cv.cvtColor(bgr,cv.COLOR_BGR2GRAY)
+                edges = cv.Canny(hsv,700,700,apertureSize = 3)
+
+=======
                 self.clahe()
+>>>>>>> e11c5a430baa1a338115b304a863524a6eb0a32b
                 self.gradient()
                 ret = getModelProps(self.frame,counter,draw=draw,plot=plot,verbose=verbose,
                                  modelpercent=self.MODELPERCENT,stingpercent=self.STINGPERCENT,
@@ -134,8 +152,15 @@ class MainWindow(QtWidgets.QMainWindow):
                 if self.SHOW_CV:
 
                     # create QImage from image
+<<<<<<< HEAD
+                    #image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
+                    #image = cv.cvtColor(self.frame, cv.COLOR_BGR2HSV)
+                    #image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+                    qImg = QImage(edges.data, w, h, step, QImage.Format_RGB888)
+=======
                     image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
                     qImg = QImage(image.data, w, h, step, QImage.Format_RGB888)
+>>>>>>> e11c5a430baa1a338115b304a863524a6eb0a32b
                     pixmap = QPixmap.fromImage(qImg)
                     self.pixmap_resize = pixmap.scaled(731, 451, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
                     # show image in img_label
@@ -209,6 +234,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self.frame = cv.cvtColor(lab, cv.COLOR_LAB2BGR)
         cv.imshow("hello", self.frame)
 
+<<<<<<< HEAD
+    def fluxDirection(self, image):
+
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (11,11), 0)
+        (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
+        widthImg = image.shape[1]
+        widthLoc = maxLoc[1]
+        fluxLoc = widthLoc/widthImg
+        if fluxLoc > 0.5:
+        	fluxDirection = "left"
+        elif fluxLoc < 0.5:
+        	fluxDirection = "right"
+        print(fluxDirection)
+
+
+=======
+>>>>>>> e11c5a430baa1a338115b304a863524a6eb0a32b
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
