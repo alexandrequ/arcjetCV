@@ -25,7 +25,7 @@ class VideoThread(QThread):
         for i in range(self.start_ind,self.stop_ind):
             frame = self.video.get_frame(i)
             self.index = i
-            ret = getModelProps(frame,i,contourChoice='default',flowDirection='right')
+            ret = getModelProps(frame,i,contourChoice='default',flowDirection='left')
             h,w,chan = np.shape(frame)
             step = chan * w
             if ret != None:
@@ -64,7 +64,6 @@ class StartWindow(QMainWindow):
         self.layout.addWidget(self.button_movie)
         self.layout.addWidget(self.button_stop) 
         self.layout.addWidget(self.image_view)
-        self.image_view.resize(640, 480)
 ##        self.layout.addWidget(self.slider)
         self.setCentralWidget(self.central_widget)
 
@@ -74,7 +73,9 @@ class StartWindow(QMainWindow):
 
     @pyqtSlot(QImage)
     def change_pixmap(self, image):
-        self.image_view.setPixmap(QPixmap.fromImage(image))
+        pixmap = QPixmap.fromImage(image)
+        self.pixmap_resize = pixmap.scaled(731, 451, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.image_view.setPixmap(self.pixmap_resize)
         #print("changed pixmap")
 
     def update_image(self):
@@ -138,7 +139,8 @@ if __name__ == "__main__":
     path = "/home/magnus/Desktop/NASA/arcjetCV/video/"
     #path = "/u/wk/mhaw/arcjetCV/video/"
     fname = "AHF335Run001_EastView_1.mp4"
-    #fname = "IHF360-005_EastView_3_HighSpeed.mp4"
+    fname = "IHF360-005_EastView_3_HighSpeed.mp4"
+    fname = "AHF335Run001_EastView_1.mp4"
     video = Video(path+fname)
     app = QApplication([])
     window = StartWindow(video)

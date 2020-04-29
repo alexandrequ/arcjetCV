@@ -232,7 +232,7 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
             cv.drawContours(orig, stingc, -1, (0,255,0), 1)
     else:
         if log is not None:
-            log.write('no GRAY sting contours found at thresh==200')
+            log.write('no GRAY sting contours found at thresh')
         return None
 
     return c,stingc
@@ -255,6 +255,7 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
     :param plot: boolean, if True plots orig image & HSV-sq image
     :returns: success boolean, model contour, sting contour
     """
+
     # Load an color image in HSV, apply HSV transform again
     hsv_ = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
     hsv_=cv.GaussianBlur(hsv_, (5, 5), 0)
@@ -262,10 +263,10 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
     histr = cv.calcHist( [inten], None, None, [256], (0, 256))
 
     minHSV = (int(minHue),0,int(intensityMin))
-    maxHSV = (int(maxHue),252,255)
+    maxHSV = (int(maxHue),255,255)
 
     stingMinHSV = (int(minHue)-35,0,int(intensityMin/3.))
-    stingMaxHSV = (int(maxHue)+30,253,255)
+    stingMaxHSV = (int(maxHue)+30,255,255)
     
     hsv = cv.cvtColor(hsv_, cv.COLOR_RGB2HSV)
     npx = inten.size
@@ -314,7 +315,8 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
             return None
         if len(contours) == 0 or cv.contourArea(c) < npx*modelpercent:
             c = stingc
-            log.write('no model contour, using stingc only')
+            if log is not None:
+                log.write('no model contour, using stingc only')
     else:
         if log is not None:
             log.write('no HSV-sq contours found')
@@ -348,7 +350,6 @@ def getROI(orig,c,stingc,draw=False,plot=False):
     :param plot: boolean, if True plots orig image & HSV-sq image
     :returns: ROI
     """
-    
     ### Bounding box
     x,y,w,h = cv.boundingRect(c)
     xs,ys,ws,hs = cv.boundingRect(stingc)
@@ -370,7 +371,6 @@ def getROI(orig,c,stingc,draw=False,plot=False):
         plt.figure()
         plt.title("Plotting getROI")
         rgb = orig[...,::-1].copy()
-        plt.subplot(1,1,1)
         plt.imshow(rgb)
         plt.tight_layout()
         plt.show()

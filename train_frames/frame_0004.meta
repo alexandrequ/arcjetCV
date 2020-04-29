@@ -1,0 +1,26 @@
+#Property, Value
+folder, ./train_frames/
+name, frame_0004
+ext, .mp4
+path, ./train_frames/frame_0004.meta
+VIDEO, IHF338Run002_WestView_1.mp4
+WIDTH, 1286
+HEIGHT, 720
+CHANNELS, 3
+NFRAMES, 869
+CALFRAME_INDEX, 592
+FIRST_GOOD_FRAME, 331
+LAST_GOOD_FRAME, 789
+USE_GRAY, True
+USE_HSVSQ, False
+MODELPERCENT, 0.010378866424745118
+MODEL_WIDTH, 31
+MODEL_HEIGHT, 310
+MODEL_CENTER, (357, 206)
+FLOW_DIRECTION, right
+iMin, 210
+iMax, 255
+hueMin, 95
+hueMax, 140
+NOTES, ?
+videopath, ./video/IHF338Run002_WestView_1.mp4
