@@ -3,7 +3,7 @@
 import imgaug as ia
 import imgaug.augmenters as iaa
 import cv2
-import numpy as np 
+import numpy as np
 seq = iaa.Sequential([
     iaa.Crop(px=(0, 16)), # crop images from each side by 0 to 16px (randomly chosen)
     iaa.Fliplr(0.5), # horizontally flip 50% of the images
@@ -21,3 +21,12 @@ segmap_aug = aug_det.augment_segmentation_maps( segmap )
 segmap_aug = segmap_aug.get_arr_int()
 cv2.imwrite('img902_1.png', image_aug)
 cv2.imwrite('img902.png', segmap_aug)
+
+#################################################@@@
+
+import cv2
+
+for i in range(10, 12):
+    img=cv2.imread('img0' +str(i) +'.png')
+    rimg=cv2.flip(img,1)
+    cv2.imwrite('img6'+str(i)+'.png',rimg)
