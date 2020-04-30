@@ -1,0 +1,25 @@
+#Property, Value
+WIDTH, 1286
+HEIGHT, 720
+CHANNELS, 3
+NFRAMES, 689
+CALFRAME_INDEX, 389
+FIRST_GOOD_FRAME, 341
+LAST_GOOD_FRAME, 650
+USE_GRAY, False
+USE_HSVSQ, True
+MODELPERCENT, 0.0333592534992224
+MODEL_WIDTH, 99
+MODEL_HEIGHT, 312
+MODEL_CENTER, (348, 196)
+FLOW_DIRECTION, right
+iMin, 225
+iMax, 255
+hueMin, 118
+hueMax, 140
+NOTES, ?
+folder, ./video
+name, IHF338Run004_WestView_2
+ext, .mp4
+videopath, ./video/IHF338Run004_WestView_2.mp4
+path, ./video/IHF338Run004_WestView_2.meta

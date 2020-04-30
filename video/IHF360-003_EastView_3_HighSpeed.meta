@@ -1,0 +1,25 @@
+#Property, Value
+folder, ./video
+name, IHF360-003_EastView_3_HighSpeed
+ext, .mp4
+videopath, ./video/IHF360-003_EastView_3_HighSpeed.mp4
+path, ./video/IHF360-003_EastView_3_HighSpeed.meta
+WIDTH, 1920
+HEIGHT, 1080
+CHANNELS, 3
+NFRAMES, 2940
+CALFRAME_INDEX, 2840
+FIRST_GOOD_FRAME, 390
+LAST_GOOD_FRAME, 2864
+USE_GRAY, False
+USE_HSVSQ, True
+MODELPERCENT, 0.1330864197530864
+MODEL_WIDTH, 308
+MODEL_HEIGHT, 896
+MODEL_CENTER, (599, 1160)
+FLOW_DIRECTION, left
+iMin, 110
+iMax, 255
+hueMin, 95
+hueMax, 140
+NOTES, ?
