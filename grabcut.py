@@ -35,7 +35,7 @@ import cv2 as cv
 
 import sys
 
-class App():
+class GrabCut():
     BLUE = [255,0,0]        # rectangle color
     RED = [0,0,255]         # PR BG
     GREEN = [0,255,0]       # PR FG
@@ -98,16 +98,20 @@ class App():
                 cv.circle(self.img, (x, y), self.thickness, self.value['color'], -1)
                 cv.circle(self.mask, (x, y), self.thickness, self.value['val'], -1)
 
-    def run(self):
+    def run(self,fn=None,outname='grab.png',maskval=2):
         # Loading images
-        if len(sys.argv) == 2:
-            filename = sys.argv[1] # for drawing purposes
+        if fn is None:
+            if len(sys.argv) == 2:
+                filename = sys.argv[1] # for drawing purposes
+            else:
+                print("No input image given, so loading default image, lena.jpg \n")
+                print("Correct Usage: python grabcut.py <filename> \n")
+                filename = 'lena.jpg'
+            self.img = cv.imread(cv.samples.findFile(filename))
         else:
-            print("No input image given, so loading default image, lena.jpg \n")
-            print("Correct Usage: python grabcut.py <filename> \n")
-            filename = 'lena.jpg'
+            filename = 'none'
+            self.img = fn
 
-        self.img = cv.imread(cv.samples.findFile(filename))
         self.img2 = self.img.copy()                               # a copy of original image
         self.mask = np.zeros(self.img.shape[:2], dtype = np.uint8) # mask initialized to PR_BG
         self.output = np.zeros(self.img.shape, np.uint8)           # output image to be shown
@@ -143,10 +147,8 @@ class App():
             elif k == ord('s'): # save image
                 bar = np.zeros((self.img.shape[0], 5, 3), np.uint8)
                 res = np.hstack((self.img2, bar, self.img, bar, self.output))
-                ret,thresh1 = cv.threshold(self.output,1,1,cv.THRESH_BINARY)
-                cv.imwrite(filename+'_', thresh1)
-                cv.imshow('output', thresh1)
-                ex = cv.waitKey(0)
+                ret,thresh1 = cv.threshold(self.output,1,maskval,cv.THRESH_BINARY)
+                cv.imwrite(outname, thresh1)
                 print(" Result saved as image \n")
             elif k == ord('r'): # reset everything
                 print("resetting \n")
@@ -184,5 +186,5 @@ class App():
 
 if __name__ == '__main__':
     print(__doc__)
-    App().run()
+    GrabCut().run()
     cv.destroyAllWindows()

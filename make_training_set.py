@@ -3,12 +3,12 @@ import numpy as np
 import cv2 as cv
 import os
 from classes.Frame import getModelProps
-from classes.Models import Video
+from classes.Models import Video, FrameMeta
 from classes.Functions import splitfn,contoursHSV,contoursGRAY,getROI
 from classes.Functions import getEdgeFromContour,combineEdges
 import matplotlib.pyplot as plt
 from glob import glob
-
+from grabcut import GrabCut
 
 ##fname = "AHF335Run001_EastView_1.mp4"
 ##fname = "IHF360-005_EastView_3_HighSpeed.mp4"
@@ -19,7 +19,8 @@ filemask = folder+ "*.mp4"
 paths = glob(filemask)
 SELECT_FRAMES = False
 MANUAL_ADJUST = False
-MAKE_MASKS = True
+MAKE_MASKS = False
+MAKE_SHOCK_MASKS = True
 
 #### Select 8 frames per video & create pngs & meta files
 if SELECT_FRAMES:
@@ -146,3 +147,45 @@ if MAKE_MASKS:
         plt.title('maskframe %i'%p)
         plt.show()
         
+if MAKE_SHOCK_MASKS:
+    ### Load existing images
+    maskfolder = "./train_masks/"
+    framefolder = "./train_frames/"
+    fpaths = sorted(glob(framefolder+ "*.png"))
+    mpaths = sorted(glob(maskfolder+ "*.png"))
+
+    for i in range(56,59):#range(0,len(fpaths)):
+        frame = cv.imread(fpaths[i],1)
+        modelmask = cv.imread(mpaths[i],1)
+        modelmask[modelmask != 1]=0
+        element = cv.getStructuringElement(cv.MORPH_ELLIPSE, (7, 7), (3, 3))
+        dilatation_dst = cv.dilate(modelmask, element)
+        sub = frame.copy()
+        sub[dilatation_dst>0] =0
+        
+        plt.imshow(sub)
+        plt.show()
+        uin = input("Shock extract? (y/n): ")
+
+        if uin == 'y':
+            outname = 'shockout.png'
+            GrabCut().run(fn=sub,outname=outname,maskval=2)
+            cv.destroyAllWindows()
+
+            shockmask = cv.imread(outname,1)
+            finalmask = modelmask + shockmask
+            cv.imwrite(mpaths[i],finalmask)
+        
+
+
+
+
+
+
+
+
+
+
+
+    
+
