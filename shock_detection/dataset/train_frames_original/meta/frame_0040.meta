@@ -1,0 +1,26 @@
+#Property, Value
+folder, ./train_frames/
+name, frame_0040
+ext, .mp4
+path, ./train_frames/frame_0040.meta
+VIDEO, ?
+WIDTH, 1920
+HEIGHT, 1080
+CHANNELS, 3
+NFRAMES, 2940
+CALFRAME_INDEX, 390
+FIRST_GOOD_FRAME, 390
+LAST_GOOD_FRAME, 2864
+USE_GRAY, False
+USE_HSVSQ, True
+MODELPERCENT, 0.08861111111111111
+MODEL_WIDTH, 288
+MODEL_HEIGHT, 638
+MODEL_CENTER, (761, 1138)
+FLOW_DIRECTION, left
+iMin, 25
+iMax, 256
+hueMin, 60
+hueMax, 155
+NOTES, ?
+videopath, ./video/IHF360-003_EastView_3_HighSpeed.mp4
