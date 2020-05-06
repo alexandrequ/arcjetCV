@@ -12,10 +12,11 @@ TRAIN = 0
 LOAD = 1
 APPLY = 1
 if (APPLY == 1) and (TRAIN == 0):
-    img = cv2.imread("pika_large.png")
+    img = cv2.imread("frame_0012.png")
     height = img.shape[0]
     width= img.shape[1]
-    input_height,input_width = max(width, height), max(width, height)
+    pix = max(width, height)- (max(width, height) % 4)
+    input_height,input_width = pix, pix
     print(input_width)
     print(input_height)
 else:
@@ -80,14 +81,14 @@ if TRAIN:
 if APPLY:
     inp_dir=""
     out_dir=""
-    regex = "pika_large.png" #inp_dir + "adept12ply_raw_????_?_?.png"
+    regex = "frame_0012.png" #inp_dir + "adept12ply_raw_????_?_?.png"
     imgpaths = sorted(glob(regex))
 
     for p in imgpaths:
         name, ext = os.path.splitext(p)
         out = model.predict_segmentation(
             inp = p,
-            out_fname = "pika_large_out.png", #out_dir+name+ext,
+            out_fname = "frame_0012_out.png", #out_dir+name+ext,
             colors=[(0,0,255),(0,255,0),(255,0,0)]
         )
         lname = name.split('_')
