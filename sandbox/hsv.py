@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 
-bgr = cv2.imread("pika_2.png")
+bgr = cv2.imread("pika.png")
 lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
 lab_planes = cv2.split(lab)
 clahe = cv2.createCLAHE(clipLimit=2.0,tileGridSize=(8,8))
@@ -25,4 +25,4 @@ maxLineGap = 10
     #cv2.line(edges,(x1,y1),(x2,y2),(0,255,0),2)
 
 
-cv2.imwrite('pika2_hsv.png',hsv)
+cv2.imwrite('pika_hsv.png',hsv)
