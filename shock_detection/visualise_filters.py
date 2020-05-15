@@ -33,7 +33,7 @@ ckpath = "checkpoints_mosaic/mynet_arcjetCV"
 ##############################################################################
 img_input = Input(shape=(input_height,input_width , 3 ))
 
-conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(img_input)
+conv1 = Conv2D(32, (3, 3), activation='relu', padding='same', name ='test1')(img_input)
 conv1 = Dropout(0.2)(conv1)
 conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv1)
 pool1 = MaxPooling2D((2, 2))(conv1)
@@ -102,11 +102,11 @@ if APPLY:
 
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 
-layer_name = 'block5_conv1'
+layer_name = 'test1'
 filter_index = 0 # Which filter in this block would you like to visualise?
 
 # Grab the filters and biases for that layer
-filters, biases = layer_dict[layer_nam e].get_weights()
+filters, biases = layer_dict[layer_name].get_weights()
 
 # Normalize filter values to a range of 0 to 1 so we can visualize them
 f_min, f_max = np.amin(filters), np.amax(filters)
