@@ -71,9 +71,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.pushButton_stop.show()
 
         LOAD = 0
+        contour = None
 
 
-        for path in self.paths:
+        for idx, path in enumerate(self.paths):
             pth, name, ext = splitfn(path)
             fname = name+ext;print("### "+ name)
 
@@ -87,8 +88,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 LOAD = 1
 
             if self.WRITE_VIDEO:
-                vid_cod = cv.VideoWriter_fourcc('m','p','4','v')
-                output = cv.VideoWriter(self.folder+"edit_"+fname[0:-4]+'.m4v', vid_cod, 100.0,(w,h))
+                vid_cod = cv.VideoWriter_fourcc('m','p','4')
+                output = cv.VideoWriter(self.folder+"edit_"+fname[0:-4]+'.mp4', vid_cod, 100.0,(w,h))
 
             nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
             fps = cap.get(cv.CAP_PROP_FPS)
@@ -116,14 +117,14 @@ class MainWindow(QtWidgets.QMainWindow):
                     plot = True
                     verbose = True
 
-
-                if (nframes%60 == 0):
+                if (idx%600 == 0):
                     frame_ai = self.cnn_apply(self.frame, self.model)
                     edges = cv.Canny(frame_ai,200,100)
                     contours, hierarchy = cv.findContours(edges,  cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+                if contour is not None:
                     cv.drawContours(self.frame, contours, -1, (0,96,196), 3)
 
-
+                # to uncomment
                 #self.gradient()
                 #ret = getModelProps(self.frame,counter,draw=draw,plot=plot,verbose=verbose,
                         #         modelpercent=self.MODELPERCENT,stingpercent=self.STINGPERCENT,
@@ -133,24 +134,24 @@ class MainWindow(QtWidgets.QMainWindow):
 
                 #cv.drawContours(self.frame, self.contours, -1, (0,96,196), 3)
 
-                if ret != None:
-                    (c,stingc), ROI, (th,cx,cy), flowRight,flags = ret
-                    (xb,yb,wb,hb) = cv.boundingRect(c)
-                    area = cv.contourArea(c)
-                    cv.rectangle(self.frame,(xb,yb,wb,hb),(255,255,255),3)
-                    cv.drawContours(self.frame, c, -1, (0,255,255), 3)
+                #if ret != None:
+                #    (c,stingc), ROI, (th,cx,cy), flowRight,flags = ret
+                #    (xb,yb,wb,hb) = cv.boundingRect(c)
+                #    area = cv.contourArea(c)
+                #    cv.rectangle(self.frame,(xb,yb,wb,hb),(255,255,255),3)
+                #    cv.drawContours(self.frame, c, -1, (0,255,255), 3)
 
                     ### Save contours and useful parameters
-                    myc.append([counter,cy,hb,area,c,flags])
+                    #myc.append([counter,cy,hb,area,c,flags])
                 if self.WRITE_VIDEO:
                     output.write(self.frame)
 
                 if self.SHOW_CV:
 
                     # create QImage from image
-                    #image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
-                    image = cv.cvtColor(self.frame, cv.COLOR_BGR2HSV)
-                    image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+                    image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
+                    #image = cv.cvtColor(self.frame, cv.COLOR_BGR2HSV)
+                    #image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
                     qImg = QImage(image.data, w, h, step, QImage.Format_RGB888)
                     pixmap = QPixmap.fromImage(qImg)
                     self.pixmap_resize = pixmap.scaled(731, 451, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
