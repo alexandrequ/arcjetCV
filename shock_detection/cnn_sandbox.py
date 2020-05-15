@@ -12,7 +12,7 @@ TRAIN = 0
 LOAD = 1
 APPLY = 1
 if (APPLY == 1) and (TRAIN == 0):
-    img = cv2.imread("pika_large_3.png")
+    img = cv2.imread("tests/pika_large_3.png")
     height = img.shape[0]
     width= img.shape[1]
     pix = max(width, height)- (max(width, height) % 4)
@@ -24,7 +24,6 @@ else:
 n_classes = 3
 epochs= 2
 ckpath = "checkpoints_mosaic/mynet_arcjetCV"
-
 ##############################################################################
 img_input = Input(shape=(input_height,input_width , 3 ))
 
@@ -81,16 +80,24 @@ if TRAIN:
 if APPLY:
     inp_dir=""
     out_dir=""
-    regex = "pika_large_3.png" #inp_dir + "adept12ply_raw_????_?_?.png"
+    regex = "tests/pika_large_3.png" #inp_dir + "adept12ply_raw_????_?_?.png"
     imgpaths = sorted(glob(regex))
-
+    print(imgpaths)
     for p in imgpaths:
+        print("hello")
         name, ext = os.path.splitext(p)
         out = model.predict_segmentation(
             inp = p,
             out_fname = "pika_large_3_out.png", #out_dir+name+ext,
             colors=[(0,0,255),(0,255,0),(255,0,0)]
         )
+
         lname = name.split('_')
+        img_out = cv2.imread("pika_large_3_out.png")
+        edges = cv2.Canny(img_out,200,100)
+        contours, hierarchy = cv2.findContours(edges,  cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        cv2.drawContours(img, contours, -1, (0,96,196), 3)
+        cv2.imwrite("pika_large_3_out_contour.png", img)
+
         if lname[-1]=='0' and lname[-2]=='0':
             print(name)

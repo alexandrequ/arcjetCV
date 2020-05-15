@@ -1,36 +1,31 @@
 """
 In this example, we demonstrate how to create simple camera viewer using Opencv3 and PyQt5
-Author: Alexandre Quintart
+Author: Magnuis Haw, Alexandre Quintart
 Last edited: 10 April 2020
 """
 
 # import system module
 import sys, os
 import PyQt5
+import numpy as np
+import cv2 as cv
+import matplotlib.pyplot as plt
+
 sys.path.append('../')
 # import some PyQt5 modules
 from gui.arcjetCV_gui import Ui_MainWindow
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QImage
-from PyQt5.QtGui import QPixmap
-
-import numpy as np
-import cv2 as cv
+from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtGui import QImage, QPixmap
 
 from classes.Frame import getModelProps
 from classes.Calibrate import splitfn
-#from sandbox import bright
-import matplotlib.pyplot as plt
-from glob import glob
 
+from glob import glob
 
 from keras.models import Input,load_model
 from keras.layers import Dropout,concatenate,UpSampling2D
 from keras.layers import Conv2D, MaxPooling2D
-
 from keras_segmentation.predict import predict_multiple
 from keras_segmentation.train import find_latest_checkpoint
 
@@ -122,15 +117,21 @@ class MainWindow(QtWidgets.QMainWindow):
                     verbose = True
 
 
-                self.cnn_apply(self.frame, self.model)
-                self.gradient()
-                ret = getModelProps(self.frame,counter,draw=draw,plot=plot,verbose=verbose,
-                                 modelpercent=self.MODELPERCENT,stingpercent=self.STINGPERCENT,
-                                 contourChoice=self.CC,flowDirection=self.FD,
-                                 intensityMin=self.iMin,intensityMax=self.iMax,
-                                 minHue=self.hueMin,maxHue=self.hueMax)
+                if (nframes%60 == 0):
+                    frame_ai = self.cnn_apply(self.frame, self.model)
+                    edges = cv.Canny(frame_ai,200,100)
+                    contours, hierarchy = cv.findContours(edges,  cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+                    cv.drawContours(self.frame, contours, -1, (0,96,196), 3)
 
-                cv.drawContours(self.frame, self.contours, -1, (0,96,196), 3)
+
+                #self.gradient()
+                #ret = getModelProps(self.frame,counter,draw=draw,plot=plot,verbose=verbose,
+                        #         modelpercent=self.MODELPERCENT,stingpercent=self.STINGPERCENT,
+                        #         contourChoice=self.CC,flowDirection=self.FD,
+                        #         intensityMin=self.iMin,intensityMax=self.iMax,
+                        #         minHue=self.hueMin,maxHue=self.hueMax)
+
+                #cv.drawContours(self.frame, self.contours, -1, (0,96,196), 3)
 
                 if ret != None:
                     (c,stingc), ROI, (th,cx,cy), flowRight,flags = ret
