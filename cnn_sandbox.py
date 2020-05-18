@@ -5,9 +5,12 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras_segmentation.predict import predict_multiple
 from keras_segmentation.train import find_latest_checkpoint
 
-TRAIN = 1
-LOAD = 0
-APPLY = 0
+from glob import glob
+from classes.Functions import splitfn
+
+TRAIN = 0
+LOAD = 1
+APPLY = 1
 input_height,input_width = 128,128
 n_classes = 3
 epochs= 2
@@ -67,9 +70,9 @@ if TRAIN:
 
 ### Apply network to target imgs
 if APPLY:
-    inp_dir="./12ply/"
+    inp_dir="./validation/"
     out_dir="./outputs/"
-    regex = inp_dir + "adept12ply_raw_????_?_?.png"
+    regex = inp_dir + "frame_????.png"
     imgpaths = sorted(glob(regex))
     
     for p in imgpaths:

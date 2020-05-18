@@ -17,10 +17,10 @@ from grabcut import GrabCut
 folder = "./video/"
 filemask = folder+ "*.mp4"
 paths = glob(filemask)
-SELECT_FRAMES = False
+SELECT_FRAMES = True
 MANUAL_ADJUST = False
 MAKE_MASKS = False
-MAKE_SHOCK_MASKS = True
+MAKE_SHOCK_MASKS = False
 
 #### Select 8 frames per video & create pngs & meta files
 if SELECT_FRAMES:
@@ -44,14 +44,20 @@ if SELECT_FRAMES:
             fname = "frame_%04d"%counter
             cv.imwrite(fd+ fname+".png",frame)
 
+            fdv = "./validation/"
+            fname = "frame_%04d"%counter
+            cap.set(cv.CAP_PROP_POS_FRAMES,int(fnumber)+10);
+            ret, frame = cap.read()
+            cv.imwrite(fdv+ fname+".png",frame)
+
             ### Add meta files
-            metapath = fd+fname+'.meta'
-            meta.path = metapath
-            meta.folder = fd
-            meta.name = fname
-            meta.CALFRAME_INDEX = int(fnumber)
-            print(meta)
-            meta.write()
+##            metapath = fd+fname+'.meta'
+##            meta.path = metapath
+##            meta.folder = fd
+##            meta.name = fname
+##            meta.CALFRAME_INDEX = int(fnumber)
+##            print(meta)
+##            meta.write()
             
             counter += 1
 
