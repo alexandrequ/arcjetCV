@@ -26,7 +26,9 @@ minArea = 1200
 sample_radius = 23.2156 #mm
 skip=1
 fitindex = 0
-PLOTXY=True;PLOTTIME=True;VERBOSE=True
+PLOT_XY=True
+PLOT_TIME=True
+VERBOSE=True
 WRITETOFILE = True
 
 for path in paths:
@@ -34,15 +36,18 @@ for path in paths:
     fname = name+ext;print("### "+ name)
 
     ### Load pickle file
-    fin = open(path,'rb');myc = np.array(pickle.load(fin));fin.close()
+    fin = open(path,'rb')
+    myc = np.array(pickle.load(fin))
+    fin.close()
 
     ### Parse file
-    t0,tf = myc[0,0],myc[-1,0]
-    time= myc[skip:-skip,0].astype(np.int16)
-    cy = myc[skip:-skip,1].astype(np.float)
-    dy = myc[skip:-skip,2].astype(np.float)
+    t0 = myc[0,0]
+    tf = myc[-1,0]
+    time = myc[skip:-skip,0].astype(np.int16)
+    cy = myc[skip:-skip,1].astype(np.float) # centroid of the shield
+    dy = myc[skip:-skip,2].astype(np.float)  # diameter of the shield
     area = myc[skip:-skip,3].astype(np.float)
-    cntrs = myc[skip:-skip,4]
+    cntrs = myc[skip:-skip,4] # contours of the shield
     flagList = myc[skip:-skip,5]
 
     R_px = dy.max()/2.
@@ -54,7 +59,8 @@ for path in paths:
     goodinds = np.nonzero(finite_area*ddt_area)[0]
 
     ### Loop through pickle file
-    recess_pos,t =[],[]
+    recess_pos = []
+    t = []
     for ind in goodinds:
         c = cntrs[ind]
         con = cv.convexHull(c)
@@ -68,13 +74,16 @@ for path in paths:
                 flowDirection = 'left'
 
         # offset vertical motion
-        xi,yi = con[:,0,0],con[:,0,1]
-        x,y = xi,yi-cyy#[ind]
+        xi = con[:,0,0]
+        yi = con[:,0,1]
+        x = xi
+        y = yi-cyy#[ind]
 
         # adjust starting location
         if flowDirection == 'left':
             imin = y.argmin()
-            y,x = np.roll(y,-imin),np.roll(x,-imin)
+            y = np.roll(y,-imin)
+            x = np.roll(x,-imin)
 
             # remove non-function corner points
             dyGreaterThanZero = np.append(np.zeros(1),np.diff(y) > 0)
@@ -93,32 +102,33 @@ for path in paths:
         except:
             xi = np.array(rnorms)*np.nan
 
-##        # interpolate full curve 
+##        # interpolate full curve
 ##        try:
 ##            yi = np.linspace(min(y[okay]),max(y[okay]),200)
 ##            xis = f(yi)
 ##        except:
 ##            xis = yi*np.nan
-            
-        if PLOTXY:
-            plt.plot(y*sample_radius/R_px,x*sample_radius/R_px,'-')            
+
+        if PLOT_XY:
+            plt.plot(y*sample_radius/R_px,x*sample_radius/R_px,'-')
 
     ### Cast list to array
-    rp,t = np.array(recess_pos),np.array(t)
+    rp = np.array(recess_pos)
+    t = np.array(t)
     sec = (t-t0)/fps
     xpos = rp*sample_radius/R_px
 
     ### remove >2 pixel jumps
     diff = abs(np.diff(rp,axis=0))>2
     isDiffGT2 = np.vstack((diff[0,:]*0,diff))
-    rp[np.nonzero(isDiffGT2)[0]] = np.nan    
-        
-    if PLOTXY:
+    rp[np.nonzero(isDiffGT2)[0]] = np.nan
+
+    if PLOT_XY:
         for i in range(0,len(rnorms)):
             ys = rnorms[i]*R_px*np.ones(len(rp))
             plt.plot(ys*sample_radius/R_px,rp[:,i]*sample_radius/R_px,'x')
         plt.show()
-    if PLOTTIME:
+    if PLOT_TIME:
         err= 2*np.ones(len(sec))*sample_radius/R_px
         inds = np.arange(0,len(sec))
         err[inds>fitindex] /= 10000.
@@ -136,4 +146,3 @@ for path in paths:
         np.savetxt(name+'.csv',xpos,delimiter=',',header = str(rnorms)[1:-1])
         np.savetxt(name+'_cy.csv',cy,delimiter=',',header = "vertical pos (px)")
         np.savetxt(name+'_time.csv',t-t0,delimiter=',',header = "frame number")
-

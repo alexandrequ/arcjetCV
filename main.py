@@ -226,7 +226,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.frame = cv.cvtColor(lab, cv.COLOR_LAB2BGR)
         cv.imshow("hello", self.frame)
 
-    def fluxDirection(self, image):
+    def flowDirection(self, image):
         gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
         gray = cv.GaussianBlur(gray, (11,11), 0)
         (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(gray)
@@ -241,11 +241,11 @@ class MainWindow(QtWidgets.QMainWindow):
         fluxLoc = widthLoc/widthImg
 
         if fluxLoc > 0.5:
-        	fluxDirection = "left"
+        	flowDirection = "left"
         elif fluxLoc < 0.5:
-        	fluxDirection = "right"
+        	flowDirection = "right"
 
-        print(fluxDirection)
+        print(flowDirection)
 
 
     def cnn_set(self,img):
