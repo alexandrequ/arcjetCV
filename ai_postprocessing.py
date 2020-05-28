@@ -13,9 +13,9 @@ from keras.layers import Dropout,concatenate,UpSampling2D
 from keras.layers import Conv2D, MaxPooling2D
 from keras_segmentation.predict import predict_multiple
 from keras_segmentation.train import find_latest_checkpoint
-from shock_extremity import shock_extremity
+from extremities import extremity
 
-def postprocessing(paths):
+def postprocessing(paths, folder):
 
     # Options
 
@@ -23,7 +23,6 @@ def postprocessing(paths):
     shield_ext = []
     time = []
     LOAD = 0
-
 
     FIRST_FRAME =  360
 
@@ -36,6 +35,9 @@ def postprocessing(paths):
         ret, frame = cap.read();
         h,w,chan = np.shape(frame)
         step = chan * w
+
+        vid_cod = cv.VideoWriter_fourcc('M','J','P','G')
+        output = cv.VideoWriter(folder+"edit_"+fname[0:-4]+'.avi', vid_cod, 30.0,(w,h))
 
         # AI set
         if (LOAD == 0):
@@ -57,19 +59,22 @@ def postprocessing(paths):
                 break
 
             # Operations on the frame
-            flowDir = flowDirection(frame)
-            if (counter%60 == 0):
-                frame_ai = cnn_apply(frame, model, counter)
+            flowDir = 'left'#flowDirection(frame)
 
-            dist_shock_CG, dist_shield_CG = shock_extremity(frame_ai, frame, flowDir)
+            #if (counter == 0):
+            frame_ai = cnn_apply(frame, model, counter)
+            dist_shock_CG, dist_shield_CG, frame_ai = extremity(frame_ai, frame, flowDir)
 
+
+
+            output.write(frame_ai)
             shock_ext.append(dist_shock_CG)
             shield_ext.append(dist_shield_CG)
-            time.append(counter)
+            time.append(counter/30)
             counter +=1
 
     plt.plot(time, shield_ext, time, shock_ext)
-    print("hello")
+    plt.show()
 
 def loadVideo():
     #path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -97,7 +102,7 @@ def flowDirection(image):
     elif fluxLoc < 0.5:
       flowDirection = "right"
 
-    print(flowDirection)
+
 
 
 def cnn_set(img):
@@ -159,10 +164,10 @@ def cnn_apply(img, model, count):
     cv.imwrite("frame.png", img)
     out = model.predict_segmentation(
         inp = "frame.png",
-        out_fname = "frame_out" + str(count) + ".png", #out_dir+name+ext,
+        out_fname = "frame_out.png",#"frame_out" + str(count) + ".png", #out_dir+name+ext,
         colors=[(0,0,255),(0,255,0),(255,0,0)]
         )
-    frame_ai = cv.imread("frame_out" + str(count) + ".png")
+    frame_ai = cv.imread("frame_out.png")
     return frame_ai
 
 
@@ -171,4 +176,5 @@ if __name__ == "__main__":
     folder = "video/"
     mask = folder+ "IHF338Run003_WestView_3.mp4"
     paths = glob(mask)
-    postprocessing(paths)
+    folder = "video/"
+    postprocessing(paths,folder)
