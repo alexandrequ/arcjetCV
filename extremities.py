@@ -1,0 +1,278 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+import imutils
+from scipy.interpolate import splev, splprep, interp1d
+
+img = cv2.imread('shock_detection/tests/frame_0012_out.png')   # you can read in images with opencv
+
+
+def extremity(img_mask, img, flowDirection):
+
+	dist_shock_CG = None
+	dist_shield_CG = None
+	dist_shock_norm = None
+	dist_shield_norm = None
+	hasShield = 0
+	hasShock = 0
+
+	rnorms = [-.75,-.5,0,.5,0.75]
+
+	#SHIELD
+
+	sumMask = np.sum(img_mask)
+	shield_color1 = np.asarray([0, 230, 0])
+	shield_color2 = np.asarray([1, 255, 1])
+	mask_shield = cv2.inRange(img_mask, shield_color1, shield_color2)
+
+	hasShield = np.sum(mask_shield)
+
+	if hasShield > 0.002*sumMask:
+
+		#Centroid
+		coordinates =cv2.findNonZero(mask_shield)
+		x = [p[0][0] for p in coordinates]
+		y = [p[0][1] for p in coordinates]
+		centroid = (int(sum(x) / len(coordinates)), int(sum(y) / len(coordinates)))
+		print(centroid)
+
+		contours, hierarchy= cv2.findContours(mask_shield, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+		cShield = max(contours, key=cv2.contourArea)
+		(xb,yb,wb,dy) = cv2.boundingRect(cShield)
+		c = np.vstack(cShield).squeeze()
+		ext_values = []
+
+
+
+	# ext_values = []
+	#
+	# for i, idx in enumerate(c[:,0,1]):
+	# 	if (i == centroid[1]):
+	# 		ext_values.append(i)
+	#
+	# if flowDirection == "left":
+	# 	ext_shock = [min(ext_values), centroid[1]]
+	# if flowDirection == "right":
+	# 	ext_shock = [max(ext_values), centroid[1]]
+
+
+		xi = c[:,0]
+		yi = c[:,1]
+		x = xi
+		y = yi-centroid[1]#[ind]
+
+		xFront = []
+		yFront = []
+
+	    # adjust starting location
+		if flowDirection == 'left':
+			# imin = y.argmin()
+			# y = np.roll(y,-imin)
+			# x = np.roll(xFront,-imin)
+	        # remove non-function corner points
+			dyGreaterThanZero = np.append(np.zeros(1),np.diff(y) > 0)
+			okay = np.nonzero(dyGreaterThanZero)[0]
+		else:
+	        # remove non-function corner points
+			dyLessThanZero = np.append(np.zeros(1),np.diff(y) < 0)
+			okay = np.nonzero(dyLessThanZero)[0]
+
+		x = x[okay]
+		y = y[okay]
+
+
+		# yMax = np.amax(y)
+		# yMaxIdx =  np.where(y == yMax)
+		# yMin = np.amin(y)
+		# yMinIdx =  np.where(y == yMin)
+		#
+		# # Select the front edge
+		# for idx, i in enumerate(x):
+		# 	if flowDirection == 'left':
+		# 		xExt = min(x[yMaxIdx], x[yMinIdx],centroid[0])
+		# 		if i <= xExt:
+		# 			xFront.append(i)
+		# 			yFront.append(y[idx])
+		# 	if flowDirection == 'right':
+		# 		xExt = max(x[yMaxIdx], x[yMinIdx], centroid[0])
+		# 		if i >= xExt:
+		# 			xFront.append(i)
+		# 			yFront.append(y[idx])
+
+
+
+		# Other Methode
+		iBefore = 0
+		for idx, i in enumerate(y):
+
+			if (y ==i).sum() > 1:
+				jdx = np.where(y == i)
+				if flowDirection == 'left':
+					goodIdx = np.where(jdx == min(x[jdx]))
+				if flowDirection == 'right':
+					goodIdx = np.where(jdx == max(x[jdx]))
+
+				jdx = np.delete(jdx, goodIdx)
+				x = np.delete(x,jdx)
+				y = np.delete(y,jdx)
+			# if abs(i-iBefore)  < 1:
+
+			# 	y = np.delete(y,idx)
+			# iBefore = y[idx-1]
+
+	    # interpolate desired radial positions
+
+		f = interp1d(y, x, kind='cubic')
+		ext_shield = [int(f(0)), centroid[1]]
+
+		R_px = dy/2.
+		f(np.array(rnorms)*R_px)
+
+		#cv2.circle(img, ext_shield, 8, (255, 255, 0), -1)
+
+		dist_shield_CG = abs(centroid[0]-ext_shield[0])
+		dist_shield_norm = dist_shield_CG/dy
+		#cv2.drawContours(img_mask, cShield, -1, (0,255,255), 3)
+
+		contours, hierarchy = cv2.findContours(mask_shield,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+		#cv2.drawContours(img,contours,-1,(255, 0, 0),5)
+		cv2.circle(img, centroid, 5, (255, 0, 0), 2)
+
+
+	# SHOCK
+
+	shock_color1 = np.asarray([230 ,0, 0])
+	shock_color2 = np.asarray([255, 0, 1])
+	mask_shock = cv2.inRange(img_mask, shock_color1, shock_color2)
+	hasShock = np.sum(mask_shock)
+
+	if hasShock > 0.002*sumMask:
+
+
+		contours, hierarchy= cv2.findContours(mask_shock, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+		#cnts = imutils.grab_contours(contours)
+		cShock = max(contours, key=cv2.contourArea)
+		c = np.vstack(cShock).squeeze()
+		ext_values = []
+		#c = np.array(cnts)
+
+
+		# for idx, i in enumerate(c[:,1]):
+		# 	if (i == centroid[1]):
+		#
+		# 		ext_values.append(c[idx,0])
+
+		xi = c[:,0]
+		yi = c[:,1]
+		x = xi
+		y = yi-centroid[1]#[ind]
+
+
+		xFront = []
+		yFront = []
+
+	    # adjust starting location
+		if flowDirection == 'left':
+			# imin = y.argmin()
+			# y = np.roll(y,-imin)
+			# x = np.roll(xFront,-imin)
+	        # remove non-function corner points
+			dyGreaterThanZero = np.append(np.zeros(1),np.diff(y) > 0)
+			okay = np.nonzero(dyGreaterThanZero)[0]
+		else:
+	        # remove non-function corner points
+			dyLessThanZero = np.append(np.zeros(1),np.diff(y) < 0)
+			okay = np.nonzero(dyLessThanZero)[0]
+
+		x = x[okay]
+		y = y[okay]
+
+
+		# yMax = np.amax(y)
+		# yMaxIdx =  np.where(y == yMax)
+		# yMin = np.amin(y)
+		# yMinIdx =  np.where(y == yMin)
+		#
+		# # Select the front edge
+		# for idx, i in enumerate(x):
+		# 	if flowDirection == 'left':
+		# 		xExt = min(x[yMaxIdx], x[yMinIdx],centroid[0])
+		# 		if i <= xExt:
+		# 			xFront.append(i)
+		# 			yFront.append(y[idx])
+		# 	if flowDirection == 'right':
+		# 		xExt = max(x[yMaxIdx], x[yMinIdx], centroid[0])
+		# 		if i >= xExt:
+		# 			xFront.append(i)
+		# 			yFront.append(y[idx])
+
+
+		# Other Methode
+
+		iBefore = 0
+		for idx, i in enumerate(y):
+
+			if (y ==i).sum() > 1:
+				jdx = np.where(y == i)
+				if flowDirection == 'left':
+					goodIdx = np.where(jdx == min(x[jdx]))
+				if flowDirection == 'right':
+					goodIdx = np.where(jdx == max(x[jdx]))
+
+				jdx = np.delete(jdx, goodIdx)
+				x = np.delete(x,jdx)
+				y = np.delete(y,jdx)
+			# if abs(i-iBefore)  < 1:
+			# 	y = np.delete(y,idx)
+			# iBefore = y[idx-1]
+
+	    # interpolate desired radial positions
+		fShock = interp1d(y, x, kind='cubic')
+
+		ext_shock = [int(fShock(0)), centroid[1]]
+		#
+		# ext_values = []
+		#
+		# for i, idx in enumerate(c[:,0,1]):
+		# 	if (i == centroid[1]):
+		# 		ext_values.append(i)
+		#
+		# if flowDirection == "left":
+		# 	ext_shock = [min(ext_values), centroid[1]]
+		# if flowDirection == "right":
+		# 	ext_shock = [max(ext_values), centroid[1]]
+
+		#cv2.circle(img, ext_shock, 8, (255, 255, 0), -1)
+
+		dist_shock_CG = abs(centroid[0]-ext_shock[0])
+		dist_shock_norm = dist_shock_CG/dy
+
+		#cv2.drawContours(img_mask, cShock, -1, (0,0,255), 2)
+
+
+		#extLeft_CG = tuple(c[extLocLeft][0])
+
+#extRight_CG = tuple(c[c[:, :, 0].argmax()][0])
+
+
+	#cv2.drawContours(img, [c], -1, (0, 255, 255), 2)
+	#cv2.circle(img, extLeft, 8, (255, 0, 0), -1)
+
+
+	cv2.imshow("Robust", img)
+	#cv2.waitKey(0)
+	#cv2.destroyAllWindows("Robust")
+
+
+
+	return dist_shock_norm, dist_shield_norm, img_mask
+
+
+
+
+if __name__ == "__main__":
+	img_mask = cv2.imread('shock_detection/tests/frame_0012_out.png')
+	img = cv2.imread('shock_detection/tests/frame_0012.png')
+	flowDirection = "left"
+	extremity(img_mask, img, flowDirection)
