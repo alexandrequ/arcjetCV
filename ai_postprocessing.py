@@ -21,6 +21,8 @@ def postprocessing(paths, folder):
 
     shock_ext = []
     shield_ext = []
+    shock_ext_perc = []
+    shield_ext_perc = []
     time = []
     LOAD = 0
 
@@ -63,17 +65,28 @@ def postprocessing(paths, folder):
 
             #if (counter == 0):
             frame_ai = cnn_apply(frame, model, counter)
-            dist_shock_CG, dist_shield_CG, frame_ai = extremity(frame_ai, frame, flowDir)
+            dist_shock_CG, dist_shield_CG, yShield_perc, dist_shock_perc, dist_shield_perc, frame_ai = extremity(frame_ai, frame, flowDir)
 
 
 
             output.write(frame_ai)
             shock_ext.append(dist_shock_CG)
             shield_ext.append(dist_shield_CG)
+            shock_ext_perc.append(dist_shock_perc)
+            shield_ext_perc.append(dist_shield_perc)
             time.append(counter/30)
             counter +=1
 
-    plt.plot(time, shield_ext, time, shock_ext)
+    plt.subplot(2, 1, 1)
+    plt.plot(time, shield_ext,'o', time, shock_ext, 'o')
+    plt.title('Extremities')
+    plt.ylabel('Damped oscillation')
+
+    plt.subplot(2, 1, 2)
+    plt.plot(time, shield_ext_perc,'o', time, shock_ext_perc, 'o')
+    plt.xlabel('time (s)')
+    plt.ylabel('% of the shield')
+
     plt.show()
 
 def loadVideo():

@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import imutils
 from scipy.interpolate import splev, splprep, interp1d
 
 img = cv2.imread('shock_detection/tests/frame_0012_out.png')   # you can read in images with opencv
@@ -9,10 +8,14 @@ img = cv2.imread('shock_detection/tests/frame_0012_out.png')   # you can read in
 
 def extremity(img_mask, img, flowDirection):
 
-	dist_shock_CG = None
 	dist_shield_CG = None
-	dist_shock_norm = None
+	dist_shock_CG = None
+	xShield_perc = None
+	xShock_perc = None
 	dist_shield_norm = None
+	dist_shock_norm = None
+	dist_shield_per = None
+	dist_shock_per = None
 	hasShield = 0
 	hasShock = 0
 
@@ -45,17 +48,6 @@ def extremity(img_mask, img, flowDirection):
 
 
 
-	# ext_values = []
-	#
-	# for i, idx in enumerate(c[:,0,1]):
-	# 	if (i == centroid[1]):
-	# 		ext_values.append(i)
-	#
-	# if flowDirection == "left":
-	# 	ext_shock = [min(ext_values), centroid[1]]
-	# if flowDirection == "right":
-	# 	ext_shock = [max(ext_values), centroid[1]]
-
 
 		xi = c[:,0]
 		yi = c[:,1]
@@ -82,27 +74,6 @@ def extremity(img_mask, img, flowDirection):
 		y = y[okay]
 
 
-		# yMax = np.amax(y)
-		# yMaxIdx =  np.where(y == yMax)
-		# yMin = np.amin(y)
-		# yMinIdx =  np.where(y == yMin)
-		#
-		# # Select the front edge
-		# for idx, i in enumerate(x):
-		# 	if flowDirection == 'left':
-		# 		xExt = min(x[yMaxIdx], x[yMinIdx],centroid[0])
-		# 		if i <= xExt:
-		# 			xFront.append(i)
-		# 			yFront.append(y[idx])
-		# 	if flowDirection == 'right':
-		# 		xExt = max(x[yMaxIdx], x[yMinIdx], centroid[0])
-		# 		if i >= xExt:
-		# 			xFront.append(i)
-		# 			yFront.append(y[idx])
-
-
-
-		# Other Methode
 		iBefore = 0
 		for idx, i in enumerate(y):
 
@@ -123,11 +94,19 @@ def extremity(img_mask, img, flowDirection):
 
 	    # interpolate desired radial positions
 
-		f = interp1d(y, x, kind='cubic')
-		ext_shield = [int(f(0)), centroid[1]]
+		fShield = interp1d(y, x, kind='cubic')
+		ext_shield = [int(fShield(0)), centroid[1]]
 
 		R_px = dy/2.
-		f(np.array(rnorms)*R_px)
+
+		try:
+			xShield_perc = fShield(np.array(rnorms)*R_px)
+			dist_shield_perc = abs(centroid[0]*np.ones(5)-xShield_perc)
+		except:
+		 	dist_shield_perc = np.empty(5)
+
+
+		yShield_perc = np.array(rnorms)*R_px
 
 		#cv2.circle(img, ext_shield, 8, (255, 255, 0), -1)
 
@@ -188,28 +167,6 @@ def extremity(img_mask, img, flowDirection):
 		x = x[okay]
 		y = y[okay]
 
-
-		# yMax = np.amax(y)
-		# yMaxIdx =  np.where(y == yMax)
-		# yMin = np.amin(y)
-		# yMinIdx =  np.where(y == yMin)
-		#
-		# # Select the front edge
-		# for idx, i in enumerate(x):
-		# 	if flowDirection == 'left':
-		# 		xExt = min(x[yMaxIdx], x[yMinIdx],centroid[0])
-		# 		if i <= xExt:
-		# 			xFront.append(i)
-		# 			yFront.append(y[idx])
-		# 	if flowDirection == 'right':
-		# 		xExt = max(x[yMaxIdx], x[yMinIdx], centroid[0])
-		# 		if i >= xExt:
-		# 			xFront.append(i)
-		# 			yFront.append(y[idx])
-
-
-		# Other Methode
-
 		iBefore = 0
 		for idx, i in enumerate(y):
 
@@ -223,50 +180,25 @@ def extremity(img_mask, img, flowDirection):
 				jdx = np.delete(jdx, goodIdx)
 				x = np.delete(x,jdx)
 				y = np.delete(y,jdx)
-			# if abs(i-iBefore)  < 1:
-			# 	y = np.delete(y,idx)
-			# iBefore = y[idx-1]
 
-	    # interpolate desired radial positions
 		fShock = interp1d(y, x, kind='cubic')
-
 		ext_shock = [int(fShock(0)), centroid[1]]
-		#
-		# ext_values = []
-		#
-		# for i, idx in enumerate(c[:,0,1]):
-		# 	if (i == centroid[1]):
-		# 		ext_values.append(i)
-		#
-		# if flowDirection == "left":
-		# 	ext_shock = [min(ext_values), centroid[1]]
-		# if flowDirection == "right":
-		# 	ext_shock = [max(ext_values), centroid[1]]
 
-		#cv2.circle(img, ext_shock, 8, (255, 255, 0), -1)
+		try:
+			xShock_perc = fShock(np.array(rnorms)*R_px)
+			dist_shock_perc = abs(centroid[0]*np.ones(5)-xShock_perc)
+		except:
+			dist_shock_per == np.empty(5)
+
+
 
 		dist_shock_CG = abs(centroid[0]-ext_shock[0])
 		dist_shock_norm = dist_shock_CG/dy
 
-		#cv2.drawContours(img_mask, cShock, -1, (0,0,255), 2)
-
-
-		#extLeft_CG = tuple(c[extLocLeft][0])
-
-#extRight_CG = tuple(c[c[:, :, 0].argmax()][0])
-
-
-	#cv2.drawContours(img, [c], -1, (0, 255, 255), 2)
-	#cv2.circle(img, extLeft, 8, (255, 0, 0), -1)
-
-
-	cv2.imshow("Robust", img)
-	#cv2.waitKey(0)
-	#cv2.destroyAllWindows("Robust")
 
 
 
-	return dist_shock_norm, dist_shield_norm, img_mask
+	return dist_shock_norm, dist_shield_norm, yShield_perc, dist_shock_perc, dist_shield_perc, img_mask
 
 
 
