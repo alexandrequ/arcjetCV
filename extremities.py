@@ -10,6 +10,7 @@ def extremity(img_mask, img, flowDirection):
 
 	dist_shield_CG = None
 	dist_shock_CG = None
+	yShield_perc = None
 	xShield_perc = None
 	xShock_perc = None
 	dist_shield_norm = None
@@ -189,6 +190,18 @@ def extremity(img_mask, img, flowDirection):
 			dist_shock_perc = abs(centroid[0]*np.ones(5)-xShock_perc)
 		except:
 			dist_shock_perc = np.empty(5)
+
+
+		yShield = np.arange(min(yShield_perc), max(yShield_perc), 0.01)
+		try:
+			xShield = [centroid[0]*np.ones(len(yShield)) - fShield(yShield)]
+		except:
+			xShield = np.empty(len(yShield))
+		try:
+			xShock = [centroid[0]*np.ones(len(yShield)) - fShock(yShield)]
+		except:
+			xShock = np.empty(len(yShield))
+
 
 
 

@@ -127,7 +127,8 @@ def postprocessing(paths, folder):
     print(yShield_perc)
     for idx in range(len(shield_ext_perc[:,0])):
         print(yShield_perc[idx,:])
-        if (yShield_perc[idx,:]).any() != None:
+        #yShield_perc[idx,:] = [float("nan"), float("nan"), float("nan"), float("nan"), float("nan")]
+        if (yShield_perc[idx,:]).any() != None and np.isnan(np.min(yShield_perc[idx,:])) == False:
             print("cool")
             f = interp1d(yShield_perc[idx,:], shield_ext_perc[idx,:], kind='cubic')
             ynew = np.arange(min(yShield_perc[idx,:]), max(yShield_perc[idx,:]), 0.01)
@@ -136,7 +137,7 @@ def postprocessing(paths, folder):
     plt.show()
 
     for idx in range(len(shield_ext_perc[:,0])):
-        if (yShield_perc[idx,:]).any() != None:
+        if (yShield_perc[idx,:]).any() != None  and np.isnan(np.min(yShield_perc[idx,:])) == False:
             f = interp1d(yShield_perc[idx,:], shock_ext_perc[idx,:], kind='cubic')
             ynew = np.arange(min(yShield_perc[idx,:]), max(yShield_perc[idx,:]), 0.01)
             xnew = f(ynew)
