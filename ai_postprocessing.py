@@ -8,6 +8,7 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 from keras.models import Input,load_model
 from keras.layers import Dropout,concatenate,UpSampling2D
 from keras.layers import Conv2D, MaxPooling2D
@@ -23,6 +24,7 @@ def postprocessing(paths, folder):
     shield_ext = []
     shock_ext_perc = []
     shield_ext_perc = []
+    yShield_perc = []
     time = []
     LOAD = 0
 
@@ -65,28 +67,80 @@ def postprocessing(paths, folder):
 
             #if (counter == 0):
             frame_ai = cnn_apply(frame, model, counter)
-            dist_shock_CG, dist_shield_CG, yShield_perc, dist_shock_perc, dist_shield_perc, frame_ai = extremity(frame_ai, frame, flowDir)
+            dist_shock_CG, dist_shield_CG, yShield_pos, dist_shock_perc, dist_shield_perc, frame_ai = extremity(frame_ai, frame, flowDir)
 
 
 
             output.write(frame_ai)
             shock_ext.append(dist_shock_CG)
             shield_ext.append(dist_shield_CG)
-            shock_ext_perc.append(dist_shock_perc)
-            shield_ext_perc.append(dist_shield_perc)
+
+            if type(dist_shock_perc) is np.ndarray:
+                shock_ext_perc.append(dist_shock_perc)
+            else:
+                shock_ext_perc.append([None, None, None, None, None])
+            if type(dist_shield_perc) is np.ndarray:
+                shield_ext_perc.append(dist_shield_perc.tolist())
+            else:
+                shield_ext_perc.append([None, None, None, None, None])
+            if type(yShield_pos) is np.ndarray:
+                yShield_perc.append(yShield_pos.tolist())
+            else:
+                yShield_perc.append([None, None, None, None, None])
             time.append(counter/30)
             counter +=1
 
-    plt.subplot(2, 1, 1)
-    plt.plot(time, shield_ext,'o', time, shock_ext, 'o')
+    shield_ext_perc = np.array(shield_ext_perc)
+    shock_ext_perc = np.array(shock_ext_perc)
+    time = np.array(time)
+
+
+    plt.plot(time, shield_ext ,'o', time, shock_ext, 'o')
+    plt.title('My title')
+    plt.xlabel('time [s]')
+    plt.ylabel('positions [%]')
+
+    plt.legend(['Shield extremities', 'Shock extremities'])
     plt.title('Extremities')
-    plt.ylabel('Damped oscillation')
+    plt.show()
 
-    plt.subplot(2, 1, 2)
-    plt.plot(time, shield_ext_perc,'o', time, shock_ext_perc, 'o')
-    plt.xlabel('time (s)')
-    plt.ylabel('% of the shield')
+    fig = plt.figure()
+    ax1 = fig.add_subplot(211)
+    ax1.set_title('Shield evolution')
+    ax1.set_ylabel('postion [%]')
+    ax2 = fig.add_subplot(212)
+    ax2.set_title('Shock evolution')
+    ax2.set_ylabel('postion [%]')
+    ax2.set_xlabel('time [s]')
+    for idx in range(len(shield_ext_perc[0,:])):
+        ax1.plot(time, shield_ext_perc[:,idx],'o')
+    ax1.legend(['75% radius','50% radius','Apex','50% radius','75% radius'])
+    for idx in range(len(shield_ext_perc[0,:])):
+        ax2.plot(time, shock_ext_perc[:,idx], 'o')
+    ax2.legend(['75% radius','50% radius','Apex','50% radius','75% radius'])
+    plt.show()
 
+    yShield_perc = np.array(yShield_perc)
+    yShield_perc = yShield_perc.astype('float64')
+    print(yShield_perc.shape)
+    print(np.transpose(yShield_perc).shape)
+    print(yShield_perc)
+    for idx in range(len(shield_ext_perc[:,0])):
+        print(yShield_perc[idx,:])
+        if (yShield_perc[idx,:]).any() != None:
+            print("cool")
+            f = interp1d(yShield_perc[idx,:], shield_ext_perc[idx,:], kind='cubic')
+            ynew = np.arange(min(yShield_perc[idx,:]), max(yShield_perc[idx,:]), 0.01)
+            xnew = f(ynew)
+            plt.plot(yShield_perc[idx,:], shield_ext_perc[idx,:],'o', ynew, xnew, '-')
+    plt.show()
+
+    for idx in range(len(shield_ext_perc[:,0])):
+        if (yShield_perc[idx,:]).any() != None:
+            f = interp1d(yShield_perc[idx,:], shock_ext_perc[idx,:], kind='cubic')
+            ynew = np.arange(min(yShield_perc[idx,:]), max(yShield_perc[idx,:]), 0.01)
+            xnew = f(ynew)
+            plt.plot(yShield_perc[idx,:], shock_ext_perc[idx,:],'o', ynew, xnew, '-')
     plt.show()
 
 def loadVideo():
