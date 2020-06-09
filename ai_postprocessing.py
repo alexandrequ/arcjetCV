@@ -8,7 +8,6 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 from keras.models import Input,load_model
 from keras.layers import Dropout,concatenate,UpSampling2D
 from keras.layers import Conv2D, MaxPooling2D
@@ -16,133 +15,73 @@ from keras_segmentation.predict import predict_multiple
 from keras_segmentation.train import find_latest_checkpoint
 from extremities import extremity
 
-def postprocessing(paths, folder):
-
+def postprocessing(path, folder, rnorms=[-.75,-.5,0,.5,0.75],
+                   FIRST_FRAME=360,LOAD=0,WRITEVIDEO=1):
     # Options
-
     shock_ext = []
     shield_ext = []
-    shock_ext_perc = []
-    shield_ext_perc = []
-    yShield_perc = []
+    shield_ypos = []
+    shock_points =[]
+    shield_points=[]
     time = []
-    LOAD = 0
 
-    FIRST_FRAME =  360
+    ### Parse filepath
+    pth, name, ext = splitfn(path)
+    fname = name+ext
+    print("### "+ name)
 
-    for idx, path in enumerate(paths):
-        pth, name, ext = splitfn(path)
-        fname = name+ext
-        print("### "+ name)
+    ### Load video
+    cap = cv.VideoCapture(path)
+    ret, frame = cap.read();
+    h,w,chan = np.shape(frame)
+    step = chan * w
+    nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
+    fps = cap.get(cv.CAP_PROP_FPS)
+    cap.set(cv.CAP_PROP_POS_FRAMES,FIRST_FRAME);
+    counter=FIRST_FRAME
 
-        cap = cv.VideoCapture(path)
-        ret, frame = cap.read();
-        h,w,chan = np.shape(frame)
-        step = chan * w
-
+    ### Write output video
+    if WRITEVIDEO:
         vid_cod = cv.VideoWriter_fourcc('M','J','P','G')
-        output = cv.VideoWriter(folder+"edit_"+fname[0:-4]+'.avi', vid_cod, 30.0,(w,h))
+        output = cv.VideoWriter(folder+"edit_"+fname[0:-4]+'.m4v', vid_cod, 30.0,(w,h))
 
-        # AI set
-        if (LOAD == 0):
-            model = cnn_set(frame)
-            LOAD = 1
+    ### Load CNN model
+    if (LOAD == 0):
+        model = cnn_set(frame)
+        LOAD = 1
 
-        nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
-        fps = cap.get(cv.CAP_PROP_FPS)
-        cap.set(cv.CAP_PROP_POS_FRAMES,FIRST_FRAME);
-        counter=FIRST_FRAME
-        myc=[]
-
-        while(True):
-
-            # Capture frame-by-frame
+    ### Loop through video frames
+    counter = FIRST_FRAME
+    while(True):
+        for i in range(0,10):
             ret, frame = cap.read()
-            if ret==False:
-                print("No more frames")
-                break
+            counter += 1
+        print(counter)
+        if ret==False:
+            print("No more frames")
+            break
 
-            # Operations on the frame
-            flowDir = 'left'#flowDirection(frame)
-
-            #if (counter == 0):
-            frame_ai = cnn_apply(frame, model, counter)
-            dist_shock_CG, dist_shield_CG, yShield_pos, dist_shock_perc, dist_shield_perc, frame_ai = extremity(frame_ai, frame, flowDir)
-
-
-
+        ### Operations on the frame
+        flowDir = flowDirection(frame)
+        frame_ai = cnn_apply(frame, model)
+        if WRITEVIDEO:
             output.write(frame_ai)
-            shock_ext.append(dist_shock_CG)
-            shield_ext.append(dist_shield_CG)
 
-            if type(dist_shock_perc) is np.ndarray:
-                shock_ext_perc.append(dist_shock_perc)
-            else:
-                shock_ext_perc.append([None, None, None, None, None])
-            if type(dist_shield_perc) is np.ndarray:
-                shield_ext_perc.append(dist_shield_perc.tolist())
-            else:
-                shield_ext_perc.append([None, None, None, None, None])
-            if type(yShield_pos) is np.ndarray:
-                yShield_perc.append(yShield_pos.tolist())
-            else:
-                yShield_perc.append([None, None, None, None, None])
-            time.append(counter/30)
-            counter +=1
+        ### Processing frame
+        shieldParams,shockParams = extremity(frame_ai, flowDir,rnorms=rnorms)
+        x,y, xShield, yShield, ShieldY, ShieldR = shieldParams
+        xs,ys, xShock, yShock, ShockY, ShockR = shockParams
 
-    shield_ext_perc = np.array(shield_ext_perc)
-    shock_ext_perc = np.array(shock_ext_perc)
-    time = np.array(time)
+        ### Save edges into arrays
+        time.append(counter)
+        shock_ext.append([xs,ys])
+        shield_ext.append([x,y])
 
-
-    plt.plot(time, shield_ext ,'o', time, shock_ext, 'o')
-    plt.title('My title')
-    plt.xlabel('time [s]')
-    plt.ylabel('positions [%]')
-
-    plt.legend(['Shield extremities', 'Shock extremities'])
-    plt.title('Extremities')
-    plt.show()
-
-    fig = plt.figure()
-    ax1 = fig.add_subplot(211)
-    ax1.set_title('Shield evolution')
-    ax1.set_ylabel('postion [%]')
-    ax2 = fig.add_subplot(212)
-    ax2.set_title('Shock evolution')
-    ax2.set_ylabel('postion [%]')
-    ax2.set_xlabel('time [s]')
-    for idx in range(len(shield_ext_perc[0,:])):
-        ax1.plot(time, shield_ext_perc[:,idx],'o')
-    ax1.legend(['75% radius','50% radius','Apex','50% radius','75% radius'])
-    for idx in range(len(shield_ext_perc[0,:])):
-        ax2.plot(time, shock_ext_perc[:,idx], 'o')
-    ax2.legend(['75% radius','50% radius','Apex','50% radius','75% radius'])
-    plt.show()
-
-    yShield_perc = np.array(yShield_perc)
-    yShield_perc = yShield_perc.astype('float64')
-    print(yShield_perc.shape)
-    print(np.transpose(yShield_perc).shape)
-    print(yShield_perc)
-    for idx in range(len(shield_ext_perc[:,0])):
-        print(yShield_perc[idx,:])
-        #yShield_perc[idx,:] = [float("nan"), float("nan"), float("nan"), float("nan"), float("nan")]
-        if (yShield_perc[idx,:]).any() != None and np.isnan(np.min(yShield_perc[idx,:])) == False:
-            print("cool")
-            f = interp1d(yShield_perc[idx,:], shield_ext_perc[idx,:], kind='cubic')
-            ynew = np.arange(min(yShield_perc[idx,:]), max(yShield_perc[idx,:]), 0.01)
-            xnew = f(ynew)
-            plt.plot(yShield_perc[idx,:], shield_ext_perc[idx,:],'o', ynew, xnew, '-')
-    plt.show()
-
-    for idx in range(len(shield_ext_perc[:,0])):
-        if (yShield_perc[idx,:]).any() != None  and np.isnan(np.min(yShield_perc[idx,:])) == False:
-            f = interp1d(yShield_perc[idx,:], shock_ext_perc[idx,:], kind='cubic')
-            ynew = np.arange(min(yShield_perc[idx,:]), max(yShield_perc[idx,:]), 0.01)
-            xnew = f(ynew)
-            plt.plot(yShield_perc[idx,:], shock_ext_perc[idx,:],'o', ynew, xnew, '-')
-    plt.show()
+        shield_ypos.append(yShield)
+        shock_points.append([xShock, yShock])
+        shield_points.append([xShield, yShield])
+        
+    return shield_ext,shock_ext,shield_ypos,shield_points,shock_points
 
 def loadVideo():
     #path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -151,14 +90,10 @@ def loadVideo():
     paths = mask
     #script = "cp -r " + str(folder_path) + " " + str(path)
 
-
-
 def flowDirection(image):
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
     gray = cv.GaussianBlur(gray, (11,11), 0)
     (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(gray)
-
-
 
     widthImg = image.shape[1]
     widthLoc = maxLoc[1]
@@ -170,17 +105,12 @@ def flowDirection(image):
     elif fluxLoc < 0.5:
       flowDirection = "right"
 
-
-
-
 def cnn_set(img):
-
-    cv.imwrite("frame.png", img)
-
     height = img.shape[0]
     width= img.shape[1]
-    pix = max(width, height)- (max(width, height) % 4)
-    input_height,input_width = pix, pix
+    hpx = height- height%4
+    wpx = width- width%4
+    input_height,input_width = hpx, wpx
 
     n_classes = 3
     epochs= 2
@@ -219,25 +149,20 @@ def cnn_set(img):
     from keras_segmentation.models.model_utils import get_segmentation_model
     model = get_segmentation_model(img_input ,  out ) # this would build the segmentation model
 
-
     latest_weights = find_latest_checkpoint(ckpath)
     model.load_weights(latest_weights)
 
     return model
 
-
-
-def cnn_apply(img, model, count):
-
-    cv.imwrite("frame.png", img)
-    out = model.predict_segmentation(
-        inp = "frame.png",
-        out_fname = "frame_out.png",#"frame_out" + str(count) + ".png", #out_dir+name+ext,
-        colors=[(0,0,255),(0,255,0),(255,0,0)]
-        )
-    frame_ai = cv.imread("frame_out.png")
-    return frame_ai
-
+def cnn_apply(img, model):
+    height = img.shape[0]
+    width= img.shape[1]
+    hpx = height- height%4
+    wpx = width- width%4
+    img = img[0:hpx,0:wpx,:]
+    
+    out = model.predict_segmentation(inp = img)
+    return out
 
 if __name__ == "__main__":
 
@@ -245,4 +170,56 @@ if __name__ == "__main__":
     mask = folder+ "IHF338Run003_WestView_3.mp4"
     paths = glob(mask)
     folder = "video/"
-    postprocessing(paths,folder)
+    shield_ext,shock_ext,shield_ypos,shield_points,shock_points = postprocessing(paths[0],folder)
+
+    
+    
+
+##    plt.plot(time, shield_ext ,'o', time, shock_ext, 'o')
+##    plt.title('My title')
+##    plt.xlabel('time [s]')
+##    plt.ylabel('positions [%]')
+##
+##    plt.legend(['Shield extremities', 'Shock extremities'])
+##    plt.title('Extremities')
+##    plt.show()
+##
+##    fig = plt.figure()
+##    ax1 = fig.add_subplot(211)
+##    ax1.set_title('Shield evolution')
+##    ax1.set_ylabel('postion [%]')
+##    ax2 = fig.add_subplot(212)
+##    ax2.set_title('Shock evolution')
+##    ax2.set_ylabel('postion [%]')
+##    ax2.set_xlabel('time [s]')
+##    for idx in range(len(shield_ext_perc[0,:])):
+##        ax1.plot(time, shield_ext_perc[:,idx],'o')
+##    ax1.legend(['75% radius','50% radius','Apex','50% radius','75% radius'])
+##    for idx in range(len(shield_ext_perc[0,:])):
+##        ax2.plot(time, shock_ext_perc[:,idx], 'o')
+##    ax2.legend(['75% radius','50% radius','Apex','50% radius','75% radius'])
+##    plt.show()
+##
+##    yShield_perc = np.array(yShield_perc)
+##    yShield_perc = yShield_perc.astype('float64')
+##    print(yShield_perc.shape)
+##    print(np.transpose(yShield_perc).shape)
+##    print(yShield_perc)
+##    for idx in range(len(shield_ext_perc[:,0])):
+##        print(yShield_perc[idx,:])
+##        #yShield_perc[idx,:] = [float("nan"), float("nan"), float("nan"), float("nan"), float("nan")]
+##        if (yShield_perc[idx,:]).any() != None and np.isnan(np.min(yShield_perc[idx,:])) == False:
+##            print("cool")
+##            f = interp1d(yShield_perc[idx,:], shield_ext_perc[idx,:], kind='cubic')
+##            ynew = np.arange(min(yShield_perc[idx,:]), max(yShield_perc[idx,:]), 0.01)
+##            xnew = f(ynew)
+##            plt.plot(yShield_perc[idx,:], shield_ext_perc[idx,:],'o', ynew, xnew, '-')
+##    plt.show()
+##
+##    for idx in range(len(shield_ext_perc[:,0])):
+##        if (yShield_perc[idx,:]).any() != None  and np.isnan(np.min(yShield_perc[idx,:])) == False:
+##            f = interp1d(yShield_perc[idx,:], shock_ext_perc[idx,:], kind='cubic')
+##            ynew = np.arange(min(yShield_perc[idx,:]), max(yShield_perc[idx,:]), 0.01)
+##            xnew = f(ynew)
+##            plt.plot(yShield_perc[idx,:], shock_ext_perc[idx,:],'o', ynew, xnew, '-')
+##    plt.show()
