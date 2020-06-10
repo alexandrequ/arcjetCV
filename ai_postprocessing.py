@@ -37,8 +37,13 @@ def postprocessing(path, folder, rnorms=[-.75,-.5,0,.5,0.75],
     step = chan * w
     nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
     fps = cap.get(cv.CAP_PROP_FPS)
-    cap.set(cv.CAP_PROP_POS_FRAMES,FIRST_FRAME);
+    cap.set(cv.CAP_PROP_POS_FRAMES,FIRST_FRAME)
     counter=FIRST_FRAME
+
+    flowDir = flowDirection(path, FIRST_FRAME)
+    print("flow direction :")
+    print(flowDir)
+
 
     ### Write output video
     if WRITEVIDEO:
@@ -61,7 +66,6 @@ def postprocessing(path, folder, rnorms=[-.75,-.5,0,.5,0.75],
             break
 
         ### Operations on the frame
-        flowDir = flowDirection(frame)
         frame_ai = cnn_apply(frame, model)
 ##        plt.imshow(frame_ai)
 ##        plt.show()
@@ -97,20 +101,38 @@ def loadVideo():
     paths = mask
     #script = "cp -r " + str(folder_path) + " " + str(path)
 
-def flowDirection(image):
-    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-    gray = cv.GaussianBlur(gray, (11,11), 0)
-    (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(gray)
+def flowDirection(path, FIRST_FRAME):
 
-    widthImg = image.shape[1]
-    widthLoc = maxLoc[1]
+    flow = []
+    cap = cv.VideoCapture(path)
+    nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
+    fps = cap.get(cv.CAP_PROP_FPS)
+    cap.set(cv.CAP_PROP_POS_FRAMES,FIRST_FRAME)
+    counter = FIRST_FRAME
+    while(True):
+        for i in range(0,10):
+            ret, frame = cap.read()
+            counter += 1
+        if ret==False:
+            break
 
-    fluxLoc = widthLoc/widthImg
+        cv.imwrite("frame_test.png", frame)
+        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        gray = cv.GaussianBlur(gray, (11,11), 0)
+        (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(gray)
 
-    if fluxLoc > 0.5:
-      flowDirection = "left"
-    elif fluxLoc < 0.5:
-      flowDirection = "right"
+        widthImg = frame.shape[1]
+        widthLoc = maxLoc[1]
+
+        fluxLoc = widthLoc/widthImg
+
+        if fluxLoc > 0.5:
+            flow.append("left")
+        elif fluxLoc < 0.5:
+            flow.append("right")
+
+    flowDirection = max(set(flow), key = flow.count)
+
     return flowDirection
 
 def cnn_set(img):
@@ -168,7 +190,7 @@ def cnn_apply(img, model):
     hpx = height- height%4
     wpx = width- width%4
     img = img[0:hpx,0:wpx,:]
-    
+
     out = model.predict_segmentation(inp = img)
     return out
 
