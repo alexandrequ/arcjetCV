@@ -121,8 +121,8 @@ img = preprocess_input(img)
 # get feature map for first hidden layer
 feature_maps = model.predict(img)
 # plot all 64 maps in an 8x8 squares
-haut = 4
-long = 8
+haut = 6
+long = 3
 
 index = 1
 for _ in range(haut):

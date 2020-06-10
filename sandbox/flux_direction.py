@@ -12,7 +12,7 @@ ap.add_argument("-r", "--radius", type = int,
 args = vars(ap.parse_args())
 
 # load the image and convert it to grayscale
-image = cv2.imread("pika.png")
+image = cv2.imread("pika_2.png")
 
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 gray = cv2.GaussianBlur(gray, (11,11), 0)
@@ -21,8 +21,9 @@ gray = cv2.GaussianBlur(gray, (11,11), 0)
 (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
 
 # display the results of the naive attempt
+cv2.circle(image, maxLoc, 15, (0, 0, 255), 4)
 cv2.imshow("Naive", image)
-
+cv2.imwrite("flowdir.png", image)
 
 widthImg = image.shape[1]
 widthLoc = maxLoc[1]
@@ -35,5 +36,6 @@ elif fluxLoc < 0.5:
 	fluxDirection = "right"
 
 print(fluxDirection)
+
 
 cv2.waitKey(0)

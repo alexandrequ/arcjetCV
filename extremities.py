@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import splev, splprep, interp1d
 
-img = cv2.imread('shock_detection/tests/frame_0012_out.png')   # you can read in images with opencv
 
 def makeDyPositive(x,y):
     newx,newy =[x[0]],[y[0]]
@@ -60,7 +59,7 @@ def extremity(img_mask, flowDirection, rnorms=[-.75,-.5,0,.5,0.75]):
     if hasShield:
         # Get leading edge
         x,y,ShieldCen,ShieldY,ShieldR = getEdge(mask_shield,flowDirection)
-        
+
         # interpolate desired radial positions
         fShield = interp1d(y, x, kind='linear')
         try:
@@ -76,7 +75,7 @@ def extremity(img_mask, flowDirection, rnorms=[-.75,-.5,0,.5,0.75]):
     if hasShock:
         # Get leading edge
         xs,ys,ShockCen,ShockY,ShockR = getEdge(mask_shock,flowDirection)
-        
+
         # interpolate desired radial positions
         fShock = interp1d(ys, xs, kind='linear')
         xShock,yShock =[],[]

@@ -119,9 +119,9 @@ def flowDirection(path, FIRST_FRAME):
 
         fluxLoc = widthLoc/widthImg
 
-        if fluxLoc < 0.5:
+        if fluxLoc > 0.5:
           flow.append("left")
-        elif fluxLoc > 0.5:
+      elif fluxLoc < 0.5:
           flow.append("right")
 
     flowDirection = max(set(flow), key = flow.count)
