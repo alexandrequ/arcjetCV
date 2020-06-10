@@ -1,6 +1,6 @@
-
+### testbed for postprocessing development 
 from glob import glob
-import sys
+import sys,pickle
 sys.path.append('../')
 from classes.Calibrate import splitfn
 from scipy.interpolate import splev, splprep, interp1d
@@ -16,7 +16,7 @@ from keras_segmentation.train import find_latest_checkpoint
 from extremities import extremity
 
 def postprocessing(path, folder, rnorms=[-.75,-.5,0,.5,0.75],
-                   FIRST_FRAME=360,LOAD=0,WRITEVIDEO=1):
+                   FIRST_FRAME=359,LOAD=0,WRITEVIDEO=1):
     # Options
     shock_ext = []
     shield_ext = []
@@ -48,12 +48,11 @@ def postprocessing(path, folder, rnorms=[-.75,-.5,0,.5,0.75],
     ### Load CNN model
     if (LOAD == 0):
         model = cnn_set(frame)
-        LOAD = 1
 
     ### Loop through video frames
     counter = FIRST_FRAME
-    while(True):
-        for i in range(0,10):
+    while(counter<614):
+        for i in range(0,1):
             ret, frame = cap.read()
             counter += 1
         print(counter)
@@ -64,13 +63,21 @@ def postprocessing(path, folder, rnorms=[-.75,-.5,0,.5,0.75],
         ### Operations on the frame
         flowDir = flowDirection(frame)
         frame_ai = cnn_apply(frame, model)
+##        plt.imshow(frame_ai)
+##        plt.show()
+
         if WRITEVIDEO:
             output.write(frame_ai)
 
         ### Processing frame
         shieldParams,shockParams = extremity(frame_ai, flowDir,rnorms=rnorms)
-        x,y, xShield, yShield, ShieldY, ShieldR = shieldParams
-        xs,ys, xShock, yShock, ShockY, ShockR = shockParams
+        
+        x,y = shieldParams[0],shieldParams[1]
+        xShield, yShield = shieldParams[2], shieldParams[3]
+        ShieldY, ShieldR = shieldParams[4],shieldParams[5]
+        xs,ys=shockParams[0],shockParams[1]
+        xShock, yShock=shockParams[2],shockParams[3]
+        ShockY, ShockR = shockParams[4],shockParams[5]
 
         ### Save edges into arrays
         time.append(counter)
@@ -81,7 +88,7 @@ def postprocessing(path, folder, rnorms=[-.75,-.5,0,.5,0.75],
         shock_points.append([xShock, yShock])
         shield_points.append([xShield, yShield])
         
-    return shield_ext,shock_ext,shield_ypos,shield_points,shock_points
+    return shield_ext,shock_ext,shield_ypos,shield_points,shock_points,time
 
 def loadVideo():
     #path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -104,6 +111,7 @@ def flowDirection(image):
       flowDirection = "left"
     elif fluxLoc < 0.5:
       flowDirection = "right"
+    return flowDirection
 
 def cnn_set(img):
     height = img.shape[0]
@@ -169,10 +177,49 @@ if __name__ == "__main__":
     folder = "video/"
     mask = folder+ "IHF338Run003_WestView_3.mp4"
     paths = glob(mask)
-    folder = "video/"
-    shield_ext,shock_ext,shield_ypos,shield_points,shock_points = postprocessing(paths[0],folder)
+    vfolder, name, ext = splitfn(paths[0])
+    foutname = vfolder+'/'+name+'.pickle'
 
-    
+    LOAD =0
+    if LOAD:
+        fin = open(foutname, 'rb')
+        out = pickle.load(fin)
+        fin.close()
+    else:
+        out = postprocessing(paths[0],folder)
+        fout = open(foutname, 'wb')
+        pickle.dump(out,fout)
+        fout.close()
+        
+    shield_ext,shock_ext,shield_ypos,shield_points,shock_points,time = out
+
+    ### Plot XY edges
+    fig0 = plt.figure(0)
+    for i in range(0,len(shield_ext)):
+        plt.plot(shield_ext[i][0],shield_ext[i][1],'g-')
+
+    ### Plot XT
+    fig1 = plt.figure(1)
+    sp = np.array(shield_points)
+    sp = np.rollaxis(sp,2,0)
+    for s in sp:
+        plt.plot(time,s[:,0],'o-')
+
+    ### Plot shock XY edges
+    plt.figure(0)
+    plt.title('XY Contours')
+    for i in range(0,len(shock_ext)):
+        plt.plot(shock_ext[i][0],shock_ext[i][1],'b-')
+
+    ### Plot shock XT
+    fig3 = plt.figure(3)
+    plt.title('Shock XT')
+    sp = np.array(shock_points)
+    sp = np.rollaxis(sp,2,0)
+    for s in sp:
+        plt.plot(time,s[:,0],'o-')
+        
+    plt.show()
     
 
 ##    plt.plot(time, shield_ext ,'o', time, shock_ext, 'o')

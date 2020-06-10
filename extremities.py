@@ -18,7 +18,7 @@ def makeDyPositive(x,y):
 
 def getEdge(mask,flowDirection):
     ### Get shield contour
-    contours, hierarchy= cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy= cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cShield = max(contours, key=cv2.contourArea)
 
     ### Calculate contour centroid
@@ -53,14 +53,13 @@ def getEdge(mask,flowDirection):
 def extremity(img_mask, flowDirection, rnorms=[-.75,-.5,0,.5,0.75]):
 
     ###### SHIELD ######
-    sumMask = np.sum(img_mask)
-    mask_shield = cv2.inRange(img_mask, 0.5, 1.5)
-    hasShield = np.sum(mask_shield) > 0.002*sumMask
+    mask_shield = img_mask==1
+    mask_bg = img_mask==0
+    hasShield = np.sum(mask_shield) > .002*np.sum(mask_bg)
 
     if hasShield:
         # Get leading edge
         x,y,ShieldCen,ShieldY,ShieldR = getEdge(mask_shield,flowDirection)
-        
         # interpolate desired radial positions
         fShield = interp1d(y, x, kind='linear')
         try:
@@ -68,12 +67,23 @@ def extremity(img_mask, flowDirection, rnorms=[-.75,-.5,0,.5,0.75]):
         except:
             xShield = np.empty(5)
         yShield = np.array(rnorms)*ShieldR
+    else:
+        x,y,ShieldCen,ShieldY,ShieldR = [None],[None],(None,None),None,None
+        xShield,yShield = None,None
 
     ###### SHOCK ######
-    mask_shock = cv2.inRange(img_mask,  1.5, 2.5)
-    hasShock = np.sum(mask_shock)> 0.002*sumMask
+    mask_shock = img_mask==2
+    hasShock = np.sum(mask_shock)> .002*np.sum(mask_bg)
 
-    if hasShock:
+    if hasShock and hasShield:
+        # Remove any trailing segments
+        if flowDirection == 'right':
+            xcutoff= ShieldCen[0] + int(ShieldR/4)
+            mask_shock[:,xcutoff:] = 0
+        else:
+            xcutoff= ShieldCen[0] - int(ShieldR/4)
+            mask_shock[:,:xcutoff] = 0
+
         # Get leading edge
         xs,ys,ShockCen,ShockY,ShockR = getEdge(mask_shock,flowDirection)
         
@@ -92,16 +102,43 @@ def extremity(img_mask, flowDirection, rnorms=[-.75,-.5,0,.5,0.75]):
             else:
                 xShock.append(None)
                 yShock.append(None)
+    else:
+        xs,ys,ShockCen,ShockY,ShockR = [None],[None],(None,None),None,None
+        xShock,yShock = None,None
 
     return [x,y, xShield, yShield, ShieldY, ShieldR], [xs,ys, xShock, yShock, ShockY, ShockR]
 
+### Convert integer segmentation to colored RGB image
+def get_colored_segmentation_image(seg_arr, n_classes, colors=[(0,0,255),(0,255,0),(255,0,0)]):
+    output_height = seg_arr.shape[0]
+    output_width = seg_arr.shape[1]
+
+    seg_img = np.zeros((output_height, output_width, 3))
+
+    for c in range(n_classes):
+        seg_arr_c = seg_arr[:, :] == c
+        seg_img[:, :, 0] += ((seg_arr_c)*(colors[c][0])).astype('uint8')
+        seg_img[:, :, 1] += ((seg_arr_c)*(colors[c][1])).astype('uint8')
+        seg_img[:, :, 2] += ((seg_arr_c)*(colors[c][2])).astype('uint8')
+    return seg_img
+
+### Convert colored RGB image to integer segmentation 
+def get_segmentation_from_colored_image(path):
+    seg_arr = cv2.imread(path,1)
+    output_height = seg_arr.shape[0]
+    output_width = seg_arr.shape[1]
+
+    seg_img = np.zeros((output_height, output_width))    
+    seg_img[:, :] += seg_arr[:,:,1] > 0 
+    seg_img[:, :] += 2*(seg_arr[:,:,0] > 0)
+    return seg_img 
 
 if __name__ == "__main__":
-    img_mask = cv2.imread('shock_detection/tests/frame_0012_out.png')
-    img = cv2.imread('shock_detection/tests/frame_0012.png')
-    flowDirection = "right"
+##    img_mask = get_segmentation_from_colored_image('shock_detection/tests/frame_0012_out.png')
+##    img = cv2.imread('shock_detection/tests/frame_0012.png')
+##    flowDirection = "right"
 
-##    img_mask = cv2.imread('shock_detection/tests/pika_large_out.png')
-##    img = cv2.imread('frames/sample12.png')
-##    flowDirection = "left"
+    img_mask = get_segmentation_from_colored_image('shock_detection/tests/pika_large_out.png')
+    img = cv2.imread('frames/sample12.png')
+    flowDirection = "left"
     a,b= extremity(img_mask, flowDirection)
