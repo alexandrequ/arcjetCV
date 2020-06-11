@@ -69,7 +69,7 @@ def extremity(img_mask, flowDirection, rnorms=[-.75,-.5,0,.5,0.75]):
         yShield = np.array(rnorms)*ShieldR
     else:
         x,y,ShieldCen,ShieldY,ShieldR = [None],[None],(None,None),None,None
-        xShield,yShield = None,None
+        xShield,yShield = np.empty(5),np.empty(5)
 
     ###### SHOCK ######
     mask_shock = img_mask==2
@@ -104,7 +104,7 @@ def extremity(img_mask, flowDirection, rnorms=[-.75,-.5,0,.5,0.75]):
                 yShock.append(None)
     else:
         xs,ys,ShockCen,ShockY,ShockR = [None],[None],(None,None),None,None
-        xShock,yShock = None,None
+        xShock,yShock = np.empty(5),np.empty(5)
 
     return [x,y, xShield, yShield, ShieldY, ShieldR], [xs,ys, xShock, yShock, ShockY, ShockR]
 
