@@ -201,17 +201,19 @@ def cnn_apply(img, model):
 if __name__ == "__main__":
 
     folder = "video/"
-    mask = folder+ "IHF338Run003_WestView_3.mp4"
-    mask = folder+ "IHF360-003_??stView_3*.mp4"
+    name = "IHF338Run003_WestView_3"
+    name = "AHF335Run001_EastView_5"
+    name = "IHF338Run002_WestView_1"
+    ext = ".mp4"
+    mask = folder+ name + ext
+    LOAD = 1
     rn = [-.75,-.5,0,.5,0.75]
-    
-    paths = glob(mask)
-    vfolder, name, ext = splitfn(paths[0])
-    meta = FrameMeta(vfolder+'/'+name+'.meta')
-    foutname = vfolder+'/'+name+'.pickle'
-    
+    if LOAD ==0:
+        paths = glob(mask)
+        vfolder, name, ext = splitfn(paths[0])
+    foutname = folder+'/'+name+'.pickle'
+    meta = FrameMeta(folder+'/'+name+'.meta')
 
-    LOAD =0
     if LOAD:
         fin = open(foutname, 'rb')
         out = pickle.load(fin)
