@@ -35,12 +35,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.stop = False
-        logo = QPixmap("logo/arcjetCV_logo.png")
+        logo = QPixmap("gui/logo/arcjetCV_logo.png")
         logo = logo.scaledToHeight(451)
         self.ui.label_img.setPixmap(logo)
         self.show()
 
-        self.folder = "video/"
+        self.folder = "data/video/"
         self.mask = self.folder+ "AHF335Run001_EastView_1.mp4"
         self.paths = glob(self.mask)
 
@@ -73,7 +73,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         for idx, path in enumerate(self.paths):
             pth, name, ext = splitfn(path)
-            fname = name+ext;print("### "+ name)
+            fname = name+ext
+            print("### "+ name)
 
             cap = cv.VideoCapture(path)
             ret, self.frame = cap.read()
@@ -81,17 +82,17 @@ class MainWindow(QtWidgets.QMainWindow):
             step = chan * w
             # AI set
             if (LOAD == 0):
-                self.model = self.cnn_set( self.frame)
+                self.model = self.cnn_set(self.frame)
                 LOAD = 1
 
             if self.WRITE_VIDEO:
-                vid_cod = cv.VideoWriter_fourcc('m','p','4')
-                output = cv.VideoWriter(self.folder+"edit_"+fname[0:-4]+'.mp4', vid_cod, 100.0,(w,h))
+                vid_cod = cv.VideoWriter_fourcc('m', 'p', '4')
+                output = cv.VideoWriter(self.folder+"edit_"+fname[0:-4]+'.mp4', vid_cod, 100.0, (w, h))
 
             nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
             fps = cap.get(cv.CAP_PROP_FPS)
-            cap.set(cv.CAP_PROP_POS_FRAMES,self.FIRST_FRAME)
-            counter=self.FIRST_FRAME
+            cap.set(cv.CAP_PROP_POS_FRAMES, self.FIRST_FRAME)
+            counter = self.FIRST_FRAME
             myc=[]
             while(True):
 
@@ -168,7 +169,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             if self.WRITE_PICKLE:
                 import pickle
-                fout = open(folder+fname[0:-4] +'_edges.pkl','wb')
+                fout = open(self.folder+fname[0:-4] +'_edges.pkl','wb')
                 pickle.dump(myc,fout)
                 fout.close()
 
