@@ -133,3 +133,5 @@ dmypy.json
 
 # images/videos
 *.mp4
+train_frames/
+train_masks/

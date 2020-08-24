@@ -1,0 +1,26 @@
+#Property, Value
+folder, ./train_frames/
+name, frame_0058
+ext, .mp4
+path, ./train_frames/frame_0058.meta
+VIDEO, ?
+WIDTH, 1286
+HEIGHT, 720
+CHANNELS, 3
+NFRAMES, 4287
+CALFRAME_INDEX, 3367
+FIRST_GOOD_FRAME, 3070
+LAST_GOOD_FRAME, 4110
+USE_GRAY, False
+USE_HSVSQ, True
+MODELPERCENT, 0.07550976326248487
+MODEL_WIDTH, 154
+MODEL_HEIGHT, 454
+MODEL_CENTER, (350, 422)
+FLOW_DIRECTION, right
+iMin, 250
+iMax, 256
+hueMin, 115
+hueMax, 125
+NOTES, ?
+videopath, ./video/AHF335Run001_EastView_1.mp4
