@@ -1,0 +1,8 @@
+{
+    "python.pythonPath": "/Users/mhaw/anaconda/envs/opencv/bin/python",
+    "python.linting.pylintUseMinimalCheckers": false,
+    "python.linting.pylintArgs": [
+        "--extension-pkg-whitelist=PyQt5,cv2"
+    ],
+    "git.ignoreLimitWarning": true,
+}
