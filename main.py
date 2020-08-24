@@ -162,11 +162,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # When everything done, release the capture
             cap.release()
-            if WRITE_VIDEO:
+            if self.WRITE_VIDEO:
                 output.release()
             cv.destroyAllWindows()
 
-            if WRITE_PICKLE:
+            if self.WRITE_PICKLE:
                 import pickle
                 fout = open(folder+fname[0:-4] +'_edges.pkl','wb')
                 pickle.dump(myc,fout)
