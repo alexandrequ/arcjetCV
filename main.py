@@ -1,28 +1,26 @@
 """
-In this example, we demonstrate how to create simple camera viewer using Opencv3 and PyQt5
+In this example, we demonstrate how to create simple camera viewer using OpenCV4 and PyQt5
 Author: Magnuis Haw, Alexandre Quintart
-Last edited: 10 April 2020
+Last edited: 24 Aug 2020
 """
-
 # import system module
-import sys, os
+import sys
+import os
+from glob import glob
 import PyQt5
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
-
 sys.path.append('../')
 # import some PyQt5 modules
 from gui.arcjetCV_gui import Ui_MainWindow
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtGui import QImage, QPixmap
-
+# import analysis functions
 from classes.Frame import getModelProps
 from classes.Calibrate import splitfn
-
-from glob import glob
-
+# import ML modules
 from keras.models import Input,load_model
 from keras.layers import Dropout,concatenate,UpSampling2D
 from keras.layers import Conv2D, MaxPooling2D
@@ -41,7 +39,6 @@ class MainWindow(QtWidgets.QMainWindow):
         logo = logo.scaledToHeight(451)
         self.ui.label_img.setPixmap(logo)
         self.show()
-
 
         self.folder = "video/"
         self.mask = self.folder+ "AHF335Run001_EastView_1.mp4"
@@ -79,7 +76,7 @@ class MainWindow(QtWidgets.QMainWindow):
             fname = name+ext;print("### "+ name)
 
             cap = cv.VideoCapture(path)
-            ret, self.frame = cap.read();
+            ret, self.frame = cap.read()
             h,w,chan = np.shape(self.frame)
             step = chan * w
             # AI set
@@ -93,7 +90,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
             fps = cap.get(cv.CAP_PROP_FPS)
-            cap.set(cv.CAP_PROP_POS_FRAMES,self.FIRST_FRAME);
+            cap.set(cv.CAP_PROP_POS_FRAMES,self.FIRST_FRAME)
             counter=self.FIRST_FRAME
             myc=[]
             while(True):
@@ -241,9 +238,9 @@ class MainWindow(QtWidgets.QMainWindow):
         fluxLoc = widthLoc/widthImg
 
         if fluxLoc > 0.5:
-        	flowDirection = "left"
+            flowDirection = "left"
         elif fluxLoc < 0.5:
-        	flowDirection = "right"
+            flowDirection = "right"
 
         print(flowDirection)
 
