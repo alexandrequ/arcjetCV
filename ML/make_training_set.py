@@ -2,24 +2,24 @@
 import numpy as np
 import cv2 as cv
 import os
-from classes.Frame import getModelProps
-from classes.Models import Video, FrameMeta
-from classes.Functions import splitfn,contoursHSV,contoursGRAY,getROI
-from classes.Functions import getEdgeFromContour,combineEdges
 import matplotlib.pyplot as plt
 from glob import glob
-from grabcut import GrabCut
+from utils.Frame import getModelProps
+from utils.Models import Video, FrameMeta
+from utils.Functions import splitfn,contoursHSV,contoursGRAY,getROI
+from utils.Functions import getEdgeFromContour,combineEdges
+from utils.grabcut import GrabCut
 
 ##fname = "AHF335Run001_EastView_1.mp4"
 ##fname = "IHF360-005_EastView_3_HighSpeed.mp4"
 ##fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 
-folder = "./video/"
+folder = "../data/video/"
 filemask = folder+ "*.mp4"
 paths = glob(filemask)
-SELECT_FRAMES = False
+SELECT_FRAMES = True
 MANUAL_ADJUST = False
-MAKE_MASKS = False
+MAKE_MASKS = True
 MAKE_SHOCK_MASKS = True
 
 #### Select 8 frames per video & create pngs & meta files

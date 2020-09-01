@@ -107,7 +107,7 @@ class GrabCut():
                 print("No input image given, so loading default image, lena.jpg \n")
                 print("Correct Usage: python grabcut.py <filename> \n")
                 filename = 'lena.jpg'
-            self.img = cv.imread(cv.samples.findFile(filename))
+            #self.img = cv.imread(cv.samples.findFile(filename))
         else:
             filename = 'none'
             self.img = fn
@@ -117,13 +117,13 @@ class GrabCut():
         self.output = np.zeros(self.img.shape, np.uint8)           # output image to be shown
 
         # input and output windows
-        cv.namedWindow('output')
-        cv.namedWindow('input')
+        cv.namedWindow('output',cv.WINDOW_NORMAL)
+        cv.namedWindow('input',cv.WINDOW_NORMAL)
         cv.setMouseCallback('input', self.onmouse)
         cv.moveWindow('input', self.img.shape[1]+10,90)
 
         print(" Instructions: \n")
-        print(" Draw a rectangle around the object using right mouse button \n")
+        print(" Draw a rectangle around the object using middle mouse button \n")
 
         while(1):
 

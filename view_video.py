@@ -6,8 +6,8 @@ from PyQt5.QtGui import QPixmap,QImage
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton,QLabel
 from PyQt5.QtWidgets import QVBoxLayout, QApplication, QSpinBox, QSlider
 
-from classes.Models import Video
-from classes.Frame import getModelProps
+from Models import Video
+from utils.Frame import getModelProps
 
 class VideoThread(QThread):
     updateImage = pyqtSignal(QImage)
@@ -25,15 +25,15 @@ class VideoThread(QThread):
         for i in range(self.start_ind,self.stop_ind):
             frame = self.video.get_frame(i)
             self.index = i
-            ret = getModelProps(frame,i,contourChoice='default',flowDirection='left')
+            ret = getModelProps(frame, i, contourChoice='default', flowDirection='right')
             h,w,chan = np.shape(frame)
             step = chan * w
             if ret != None:
-                (c,stingc), ROI, (th,cx,cy), flowRight,flags = ret
+                (c,stingc), ROI, (th, cx, cy), flowRight, flags = ret
                 (xb,yb,wb,hb) = cv.boundingRect(c)
                 area = cv.contourArea(c)
-                cv.rectangle(frame,(xb,yb,wb,hb),(255,255,255),3)
-                cv.drawContours(frame, c, -1, (0,255,255), 3)
+                cv.rectangle(frame,(xb,yb,wb,hb),(255, 255, 255),3)
+                cv.drawContours(frame, c, -1, (0, 255, 255), 3)
             nframe = cv.cvtColor(frame,cv.COLOR_BGR2RGB)
             qImg = QImage(nframe.data, w, h, step, QImage.Format_RGB888)
             self.updateImage.emit(qImg)
@@ -42,6 +42,16 @@ class VideoThread(QThread):
     def stop(self):
         self.stopFlag = True
         self.stopSignal.emit(self.index)
+
+class MyLabel(QLabel):
+    def __init__(self):
+        super(MyLabel,self).__init__()
+
+    def mousePressEvent(self,event):
+        print(event.x(), event.y())
+
+    def mouseReleaseEvent(self,event):
+        print(event.x(), event.y())
 
 class StartWindow(QMainWindow):
     def __init__(self, video = None):
@@ -53,7 +63,7 @@ class StartWindow(QMainWindow):
         self.frame_index = QSpinBox(self.central_widget)
         self.frame_index.setRange(0,video.nframes-1)
         self.button_movie = QPushButton('Start Movie', self.central_widget)
-        self.image_view = QLabel()
+        self.image_view = MyLabel()
         
 ##        self.slider = QSlider(Qt.Horizontal)
 ##        self.slider.setRange(0,10)
@@ -74,8 +84,10 @@ class StartWindow(QMainWindow):
     @pyqtSlot(QImage)
     def change_pixmap(self, image):
         pixmap = QPixmap.fromImage(image)
-        self.pixmap_resize = pixmap.scaled(731, 451, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self.image_view.setPixmap(self.pixmap_resize)
+        #self.pixmap_resize = pixmap.scaled(731, 451, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        #self.image_view.setPixmap(self.pixmap_resize)
+
+        self.image_view.setPixmap(pixmap)
         #print("changed pixmap")
 
     def update_image(self):
@@ -120,12 +132,6 @@ class StartWindow(QMainWindow):
         self.frame_index.setEnabled(True)
         self.button_movie.setEnabled(True)
 
-
-
-##        cv.imshow('',frame)
-##        cv.waitKey(0) # waits until a key is pressed
-        #cv.destroyAllWindows() # destroys the window showing image
-
                 
 if __name__ == "__main__":
     import sys
@@ -136,12 +142,14 @@ if __name__ == "__main__":
         sys.exit(1) 
     sys.excepthook = exception_hook
     
-    path = "/home/magnus/Desktop/NASA/arcjetCV/video/"
+    path = "/home/magnus/Desktop/NASA/arcjetCV/data/video/"
     #path = "/u/wk/mhaw/arcjetCV/video/"
-    fname = "AHF335Run001_EastView_1.mp4"
-    fname = "IHF360-005_EastView_3_HighSpeed.mp4"
-    fname = "AHF335Run001_EastView_1.mp4"
+    fname = "AHF335Run001_EastView_5.mp4"
+    #fname = "IHF360-003_EastView_3_HighSpeed.mp4"
+    # fname = "AHF335Run001_EastView_1.mp4"
+    fname = "IHF338Run006_EastView_1.mp4"
     video = Video(path+fname)
+    print(video)
     app = QApplication([])
     window = StartWindow(video)
     window.show()

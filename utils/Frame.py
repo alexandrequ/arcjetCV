@@ -1,9 +1,9 @@
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
-from classes.Functions import getOrientation,classifyImageHist,getROI
-from classes.Functions import contoursGRAY,contoursHSV,combineEdges
-from classes.Functions import getConvexHull,getEdgeFromContour
+from utils.Functions import getOrientation,classifyImageHist,getROI
+from utils.Functions import contoursGRAY,contoursHSV,combineEdges
+from utils.Functions import getConvexHull,getEdgeFromContour
 
 class Logger(object):
     def __init__(self,filename,PRINT=True,FILEIO=False,prefix=''):

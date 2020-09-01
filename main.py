@@ -14,12 +14,13 @@ import matplotlib.pyplot as plt
 sys.path.append('../')
 # import some PyQt5 modules
 from gui.arcjetCV_gui import Ui_MainWindow
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5 import QtWidgets, QtGui
+from PyQt5.QtCore import Qt, QThread, QTimer,pyqtSignal,pyqtSlot
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtGui import QImage, QPixmap
 # import analysis functions
-from classes.Frame import getModelProps
-from classes.Calibrate import splitfn
+from utils.Frame import getModelProps
+from utils.Calibrate import splitfn
 # import ML modules
 from keras.models import Input,load_model
 from keras.layers import Dropout,concatenate,UpSampling2D
@@ -41,7 +42,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.show()
 
         self.folder = "data/video/"
-        self.mask = self.folder+ "AHF335Run001_EastView_1.mp4"
+        self.mask = self.folder+ "AHF335Run001_EastView_?.mp4"
         self.paths = glob(self.mask)
 
         self.ui.pushButton_runEdgesFullVideo.clicked.connect(self.run)
@@ -49,6 +50,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.actionLoad_video.triggered.connect(self.loadVideo)
 
     def run(self):
+        # Error check video filepath
+         # one or more paths
+         # each path is valid
+        print(self.paths,self.mask)
 
         # Options
         self.WRITE_VIDEO = self.ui.checkBox_writeVideo.isChecked()
@@ -152,7 +157,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     #image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
                     qImg = QImage(image.data, w, h, step, QImage.Format_RGB888)
                     pixmap = QPixmap.fromImage(qImg)
-                    self.pixmap_resize = pixmap.scaled(731, 451, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+                    self.pixmap_resize = pixmap.scaled(731, 451, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     # show image in img_label
                     self.ui.label_img.setPixmap(self.pixmap_resize)
                     QApplication.processEvents() # update display
@@ -257,7 +262,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         n_classes = 3
         epochs= 2
-        ckpath = "shock_detection/checkpoints_mosaic/mynet_arcjetCV"
+        ckpath = "ML/checkpoints_mosaic/mynet_arcjetCV"
 
         ##############################################################################
         img_input = Input(shape=(input_height,input_width , 3 ))

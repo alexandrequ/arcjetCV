@@ -1,8 +1,11 @@
 {
-    "python.pythonPath": "/Users/mhaw/anaconda/envs/opencv/bin/python",
+    "python.pythonPath": "/home/magnus/miniconda3/envs/jupyterlab/bin/python",
     "python.linting.pylintUseMinimalCheckers": false,
     "python.linting.pylintArgs": [
         "--extension-pkg-whitelist=PyQt5,cv2"
     ],
     "git.ignoreLimitWarning": true,
+    "python.linting.flake8Enabled": false,
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
 }

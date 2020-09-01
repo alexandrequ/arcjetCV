@@ -9,6 +9,15 @@ def splitfn(fn):
     name, ext = os.path.splitext(fn)
     return path, name, ext
 
+def filter_hsv_ranges(hsv,ranges):
+    ''' Get union of masks for multiple hsv ranges '''
+    maskHSV = np.zeros((hsv.shape[0],hsv.shape[1]),dtype=np.uint8)
+    for i in range(0,len(ranges[0])):
+        mask = cv.inRange(hsv, ranges[0][i],ranges[1][i])
+        maskHSV = cv.bitwise_or(mask,maskHSV)
+        
+    return maskHSV
+
 def interpolateContour(contour, ninterp, kind='linear'):
     """
     Interpolates given opencv contour using length parameterization
@@ -38,7 +47,7 @@ def interpolateContour(contour, ninterp, kind='linear'):
     output[:,0,0],output[:,0,1] = xi,yi
 
     return output
-    
+
 def getConvexHull(contour, ninterp, flowRight, plot=False):
     """
     Returns interpolated convexHull contour
@@ -50,8 +59,8 @@ def getConvexHull(contour, ninterp, flowRight, plot=False):
     c= cv.convexHull(contour, clockwise=True)
     c = np.append(c[-1:, :, :], c,axis=0)
 
-    ### cycle contour indices such that 
-    ### index==0 is at top left (min row) 
+    ### cycle contour indices such that
+    ### index==0 is at top left (min row)
     ind = c[:,0,1].argmin(); c= np.roll(c,-ind+1,axis=0)
 
     # Interpolate positions
@@ -117,7 +126,7 @@ def classifyImageHist(img,verbose=False,stingpercent=.05,modelpercent=.005):
     gray = hsv_[:,:,2]
 
     ### grayscale histogram
-    histr = cv.calcHist( [gray], None, None, [256], (0, 256));
+    histr = cv.calcHist( [gray], None, None, [256], (0, 256))
     imgsize = gray.size
 
     ### classification criteria
@@ -192,9 +201,9 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
     
     ### take channel with least saturation
     img = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
-##    b,g,r = cv.split(hsv)
-##    ind = np.argmin([b.sum(),g.sum(),r.sum()])
-##    gray = orig[:,:,ind]
+    # b,g,r = cv.split(hsv)
+    # ind = np.argmin([b.sum(),g.sum(),r.sum()])
+    # gray = orig[:,:,ind]
     
     # create a CLAHE object (Arguments are optional).
     clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
@@ -206,10 +215,10 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
 
     if plot:
         plt.figure()
-        ax0 = plt.subplot(211);
+        ax0 = plt.subplot(211)
         plt.title("initial gray image")
         plt.imshow(gray)
-        ax1 = plt.subplot(212);
+        ax1 = plt.subplot(212)
         plt.imshow(th1)
         plt.show()
     contours,hierarchy = cv.findContours(th1, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
@@ -237,6 +246,62 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
 
     return c,stingc
 
+def contoursAutoHSV(orig,flags={'DIM_MODEL':False,'DIM_SHOCK':False, 'MODEL_FRACTION':0.05},
+                log=None):
+    img = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
+    npx = orig.shape[0]*orig.shape[1]
+
+    ### HSV pixel ranges for models taken from sample frames
+    model_ranges  = np.array([[(0,0,208),   (155,0,155),  (13,20,101), (0,190,100),  (12,150,130)], 
+                          [(180,70,255),(165,125,255),(33,165,255),(13,245,160),(25,200,250)]])
+    dim_model =np.array([[(7,0,8)],[(20,185,101)]])
+
+    ### HSV pixel ranges for shocks taken from sample frames
+    shock_ranges = np.array([[(125,78,115)], 
+                            [(145,190,230)]])
+    dim_shocks = np.array([[(125,100,35), (140,30,20), (118,135,30)], 
+                        [(165,165,150),(156,90,220),(128,194,125)]])
+    
+    # Append additional ranges for underexposed images
+    if flags['DIM_MODEL']:
+        model_ranges = np.hstack((model_ranges,dim_model))
+    if flags['DIM_SHOCK']:
+        shock_ranges = np.hstack((shock_ranges,dim_shocks))
+
+    # Apply shock filter and extract shock contour
+    shockfilter = filter_hsv_ranges(img,shock_ranges)
+    shockcontours,hierarchy = cv.findContours(shockfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+
+    # find the biggest contour (c) by area
+    if len(shockcontours) == 0:
+        flags['SHOCK_CONTOUR'] = None
+        if log is not None:
+            log.write('no shock contours found')
+    else:
+        c = max(shockcontours, key = cv.contourArea)
+        if cv.contourArea(c) > npx*flags['MODEL_FRACTION']:
+            flag['SHOCK_CONTOUR'] = c
+        else:
+            flags['SHOCK_CONTOUR'] = None
+
+    # Apply model filter and extract model contour
+    modelfilter = filter_hsv_ranges(img,model_ranges)
+    modelcontours,hierarchy = cv.findContours(modelfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+
+    # find the biggest contour (c) by area
+    if len(modelcontours) == 0:
+        flags['MODEL_CONTOUR'] = None
+        if log is not None:
+            log.write('no model contours found')
+    else:
+        c = max(modelcontours, key = cv.contourArea)
+        if cv.contourArea(c) > npx*flags['MODEL_FRACTION']:
+            flag['MODEL_CONTOUR'] = c
+        else:
+            flags['MODEL_CONTOUR'] = None
+    
+    return flags
+
 def contoursHSV(orig,draw=False,plot=False,log=None,
                 minHue=95,maxHue=121,flags=None,
                 modelpercent=.005,intensityMin=None):
@@ -258,7 +323,7 @@ def contoursHSV(orig,draw=False,plot=False,log=None,
 
     # Load an color image in HSV, apply HSV transform again
     hsv_ = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
-    hsv_=cv.GaussianBlur(hsv_, (5, 5), 0)
+    hsv_= cv.GaussianBlur(hsv_, (5, 5), 0)
     inten = hsv_[:,:,2]
     histr = cv.calcHist( [inten], None, None, [256], (0, 256))
 
@@ -359,13 +424,13 @@ def getROI(orig,c,stingc,draw=False,plot=False):
 
     ROI = (x1,y1,x2-x1,y2-y1)
     boxes = ((x,y,w,h),(xs,ys,ws,hs))
-    
+
     ### Draw features
     if draw:
         cv.rectangle(orig,ROI,(255,255,255))
         cv.drawContours(orig, c, -1, (255,0,0),1)
         cv.drawContours(orig, stingc, -1, (0,255,0), 1)
-    
+
     if plot:
         # show the images
         plt.figure()
@@ -399,22 +464,22 @@ def combineEdges(c,stingc,cutoff=50):
     """
     Combine model and sting contours to capture
     front corners of models
-    
+
     :param c: opencv contour for model, shape(n,1,n)
     :param stingc: opencv contour for sting, shape(n,1,n)
     :param cutoff: integer, # of elements at edge of model contour to clip
     :returns: merged contour
     """
     lowcut,highcut =cutoff,cutoff
-    
+
     ### top corner
     pc = c[lowcut,0,:]
     ind = np.where(stingc[:,0,0] == pc[0])[0][0]
     mt=stingc[:ind+1,0,:]
-    
+
     #linear offset correction
     delta = stingc[ind,:,:] - pc
-    
+
     if abs(delta[0][1]) > 15:
         lowcut +=20
         pc = c[lowcut,0,:]
@@ -450,12 +515,12 @@ def combineEdges(c,stingc,cutoff=50):
 
 def smooth(x,window_len=11,window='hanning'):
     """smooth the data using a window with requested size.
-    
+
     This method is based on the convolution of a scaled window with the signal.
     The signal is prepared by introducing reflected copies of the signal 
     (with the window size) in both ends so that transient parts are minimized
     in the begining and end part of the output signal.
-    
+
     input:
         x: the input signal 
         window_len: the dimension of the smoothing window; should be an odd integer
@@ -464,15 +529,15 @@ def smooth(x,window_len=11,window='hanning'):
 
     output:
         the smoothed signal
-        
+    
     example:
 
     t=linspace(-2,2,0.1)
     x=sin(t)+randn(len(t))*0.1
     y=smooth(x)
-    
+
     see also: 
-    
+
     numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
     scipy.signal.lfilter
  
@@ -505,6 +570,23 @@ def smooth(x,window_len=11,window='hanning'):
 
     y=np.convolve(w/w.sum(),s,mode='valid')
     return y[int(window_len/2-1):-int(window_len/2)] 
- 
 
+def convert_mask_BGR_to_gray(img):
+    mask = np.zeros(img.shape[0:2],np.uint8)
+    B,G,R = img[:,:,0], img[:,:,1], img[:,:,2]
     
+    # Red -> 0, Green->1, Blue -> 2
+    mask[R>2] = 0
+    mask[G>2] = 1
+    mask[B>2] = 2
+
+    return mask
+
+def convert_mask_gray_to_BGR(img):
+    mask = np.zeros((img.shape[0], img.shape[1], 3), np.uint8)
+    # Red -> 0, Green->1, Blue -> 2
+    mask[:,:,0]= (img==2)*255
+    mask[:,:,1]= (img==1)*255
+    mask[:,:,2]= (img==0)*255
+
+    return mask

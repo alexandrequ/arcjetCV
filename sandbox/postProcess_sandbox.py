@@ -2,8 +2,8 @@ import numpy as np
 import cv2 as cv
 import pickle
 import matplotlib.pyplot as plt
-from classes.Functions import smooth,interpolateContour,getOrientation
-from classes.Calibrate import splitfn
+from utils.Functions import smooth,interpolateContour,getOrientation
+from utils.Calibrate import splitfn
 from scipy.interpolate import splev, splprep, interp1d
 from glob import glob
 

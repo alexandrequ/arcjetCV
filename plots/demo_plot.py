@@ -2,8 +2,8 @@ import numpy as np
 import cv2 as cv
 import sys
 sys.path.append('../')
-from classes.Frame import getModelProps
-from classes.Calibrate import splitfn
+from utils.Frame import getModelProps
+from utils.Calibrate import splitfn
 import matplotlib.pyplot as plt
 from glob import glob
 

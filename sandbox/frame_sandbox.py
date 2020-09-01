@@ -2,8 +2,8 @@ import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-from classes.Frame import getModelProps,annotateImage
-from classes.Functions import *
+from utils.Frame import getModelProps,annotateImage
+from utils.Functions import *
 
 folder = "frames/"
 fname = folder+'sample5.png'

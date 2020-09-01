@@ -25,7 +25,7 @@ import sys
 sys.path.append('../')
 import getopt
 from glob import glob
-from classes.Functions import splitfn
+from utils.Functions import splitfn
 
 ### calibration functions
 def processImage(fn,debug_dir='./output/'):
