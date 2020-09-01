@@ -249,7 +249,7 @@ def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
 def contoursAutoHSV(orig,flags={'DIM_MODEL':False,'DIM_SHOCK':False, 'MODEL_FRACTION':0.05},
                 log=None):
     img = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
-    npx = orig.shape[0]*orig.shape[1]
+    npx = orig.size
 
     ### HSV pixel ranges for models taken from sample frames
     model_ranges  = np.array([[(0,0,208),   (155,0,155),  (13,20,101), (0,190,100),  (12,150,130)], 

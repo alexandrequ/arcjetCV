@@ -29,7 +29,8 @@ class Processor(object):
             self.CHANNELS = self.SHAPE[2]
         else:
             self.CHANNELS = 1
-        self.FLOW_DIRECTION = flow_direction
+        if flow_direction is None:
+            self.FLOW_DIRECTION = self.get_flow_direction(frame)
         if crop_range is None:
             self.CROP = [[0,self.HEIGHT], [0,self.WIDTH]]
         else:
@@ -76,16 +77,14 @@ class Processor(object):
         :returns: dictionary of flags
         """
         try:
-            verbose = argdict['verbose']
-            stingpercent = argdict['stingpercent']
-            modelpercent = argdict['modelpercent']
+            verbose = argdict['VERBOSE']
+            modelpercent = argdict['MODEL_FRACTION']
         except KeyError:
-            verbose = False; stingpercent=.05; modelpercent=.005
+            verbose = False; modelpercent=0.005
 
         ### HSV brightness value histogram
-        hsv_ = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-        hsv_=cv.GaussianBlur(hsv_, (5, 5), 0)
-        gray = hsv_[:,:,2]
+        gray_ = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        gray  = cv.GaussianBlur(gray_, (5, 5), 0)
 
         ### grayscale histogram
         histr = cv.calcHist( [gray], None, None, [256], (0, 256))
@@ -94,38 +93,10 @@ class Processor(object):
         ### classification criteria
         modelvis = (histr[12:250]/imgsize > 0.00).sum() != 1
         modelvis *= histr[50:250].sum()/imgsize > modelpercent
-        stingvis= histr[50:100].sum()/imgsize > stingpercent
-        overexp = histr[243:].sum()/imgsize > modelpercent
-        underexp= histr[150:].sum()/imgsize < modelpercent
+        argdict['MODEL_VISIBLE'] = modelvis
+        argdict['OVEREXPOSED'] = modelvis = histr[243:].sum()/imgsize > modelpercent
+        argdict['UNDEREXPOSED'] = modelvis= histr[150:].sum()/imgsize < modelpercent
 
-        ### Determine saturation limit
-        slimit,peaki=253,240
-        if overexp:
-            peaki = histr[240:].argmax() +240
-            if histr[peaki:].sum()/imgsize > modelpercent:
-                slimit = peaki-1
-        saturated = histr[slimit:].sum()/imgsize > modelpercent
-
-        ### Extract intensity threshold
-        try:
-            total = histr[30:].sum()+1
-            exp_val = (histr[30:].ravel()*np.arange(30,256)).sum()/total
-            avg = int(max(exp_val,55))
-            peaki = histr[avg:].argmax() +avg
-            if abs(peaki-avg) < 10:
-                thresh=peaki-15
-            else:
-                thresh = max(histr[avg:peaki].argmin() +avg, peaki-15)
-        except:
-            thresh = 150
-        
-        if verbose:
-            print('peaki, slimit, thresh', peaki,slimit,thresh)
-            print("Model visible",modelvis)
-            print("Sting visible",stingvis)
-            print("overexposed", overexp)
-            print("underexposed", underexp)
-            print("saturated",saturated)
         return argdict
 
     def preprocess(self, frame, argdict):
@@ -218,7 +189,7 @@ class VideoMeta(object):
                 'FIRST_GOOD_FRAME','LAST_GOOD_FRAME',
                 'YMIN','YMAX','XMIN','XMAX','FRAME_NUMBER']
     floattype = ['MODELPERCENT', 'INTENSITY_THRESHOLD']
-    booltype  = ['SHOCK_VISIBLE','MODEL_VISIBLE', 'OVEREXPOSED', 'EDGE_SATURATED']
+    booltype  = ['SHOCK_VISIBLE','MODEL_VISIBLE', 'OVEREXPOSED', 'UNDEREXPOSED','SATURATED']
     pointtype = []
 
     def __init__(self,path):
@@ -309,8 +280,10 @@ if __name__ == '__main__':
     video = Video(path+fname+".mp4")
     print(video)
     frame = video.get_frame(vm.FIRST_GOOD_FRAME)
-    cv.imwrite("test.png",frame)
-    fm = FrameMeta("test.meta",vm.FIRST_GOOD_FRAME,vm)
-    #fm.write()
-    print(fm)
+    p = Processor(frame)
+
+    # cv.imwrite("test.png",frame)
+    # fm = FrameMeta("test.meta",vm.FIRST_GOOD_FRAME,vm)
+    # fm.write()
+    # print(fm)
     video.close_video()
