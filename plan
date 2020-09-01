@@ -1,31 +1,26 @@
-Frame analysis
-
-    Camera Calibration - input multiple images of chessboard, return camera params
-    Image Normalization 
-        rescale to 255? 1?
-        smoothing/denoising
-        calibration
-        grayscale representation
-        histogram reshuffling
+GUI work
+    postprocess tab operational
+        plots and text
+        output formats
+    iterate processing tab design
+        grayscale + HSV + ML
+        decide on user playback controls (frame/video)
     
-    Finding ROI
-        find largest body location using thresholding, blobfinder
-        identify bounding box, centerline, orientation
+ML more robust/faster
+    find error frames and add to training set
+    retrain on full set using HSV input
+    spallation tracking as 4th class
+    try running on Pleides/GPU machines
+
+Frame analysis
+    Camera Calibration - input multiple images of chessboard, return camera params
     
     Pose estimation
         attach calibration checkerboard to arms
         find pattern in frames
-    
-    Edge extraction algorithms - should use multiple techniques
-        Identify which gradient parameters are most effective (HSV-sq, grayscale)
-        find model contour, sting adapter contour
-        Get front edge from contours + ROI
-        Save edge data in useful file format
         
-Video analysis
-    sting tracking
-    feature tracking
-    line tracking
-    edge tracking
-    particle tracking 
+    Feature tracking
+        line tracking
+        sting edge tracking
+        particle tracking 
     
