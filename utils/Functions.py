@@ -48,7 +48,7 @@ def interpolateContour(contour, ninterp, kind='linear'):
 
     return output
 
-def getConvexHull(contour, ninterp, flowRight, plot=False):
+def getConvexHull(contour, ninterp, plot=False):
     """
     Returns interpolated convexHull contour
 
@@ -71,7 +71,7 @@ def getConvexHull(contour, ninterp, flowRight, plot=False):
         plt.plot(c[0,:,0],c[0,:,1],'ro')
         plt.plot(c[5,:,0],c[5,:,1],'bo')
         plt.show()
-    
+
     return c.astype(np.int32)
 
 def getContourAxes(contour):
@@ -91,7 +91,7 @@ def getContourAxes(contour):
     mean = np.empty((0))
     mean, eigenvectors, eigenvalues = cv.PCACompute2(data_pts, mean)
     angle = np.arctan2(eigenvectors[0,1], eigenvectors[0,0]) # orientation in radians
-    
+
     return mean[0],eigenvectors, eigenvalues,angle
 
 def getOrientation(contour):
@@ -188,330 +188,187 @@ def mask3(img,c):
     mask[:,:,1],mask[:,:,2] = mask[:,:,0],mask[:,:,0]
     return mask
 
-def contoursGRAY(orig,thresh,log=None,draw=False,plot=False):
+def contoursGRAY(orig,thresh=150,log=None):
     """
     Find contours for overexposed images
 
     :param orig: opencv 8bit BGR image
     :param thresh: integer threshold
-    :param draw: boolean, if True draws on orig image
-    :param plot: boolean, if True plots orig image
-    :returns: success boolean, model contour, sting contour
+    :returns: model contour
     """
-    
+    flags={'SHOCK_CONTOUR_FAILED':True}
     ### take channel with least saturation
-    img = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
-    # b,g,r = cv.split(hsv)
-    # ind = np.argmin([b.sum(),g.sum(),r.sum()])
-    # gray = orig[:,:,ind]
-    
-    # create a CLAHE object (Arguments are optional).
-    clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-    gray = clahe.apply(img)
+    gray_ = cv.cvtColor(orig, cv.COLOR_BGR2GRAY)
 
     ### Global grayscale threshold
-    gray=cv.GaussianBlur(gray, (5, 5), 0)        
-    ret1,th1 = cv.threshold(gray,thresh,256,cv.THRESH_BINARY)
-
-    if plot:
-        plt.figure()
-        ax0 = plt.subplot(211)
-        plt.title("initial gray image")
-        plt.imshow(gray)
-        ax1 = plt.subplot(212)
-        plt.imshow(th1)
-        plt.show()
+    gray=cv.GaussianBlur(gray_, (5, 5), 0)
+    ret1,th1 = cv.threshold(gray,thresh,255,cv.THRESH_BINARY)
     contours,hierarchy = cv.findContours(th1, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     if len(contours) != 0:
         # find the biggest contour (c) by the area
-        c = max(contours, key = cv.contourArea)
-        if draw:
-            cv.drawContours(orig, c, -1, (255,0,0), 1)
+        modelC = max(contours, key = cv.contourArea)
     else:
         if log is not None:
             log.write('no GRAY model contours found at thresh==%i'%thresh)
-        return None
+        modelC = None
+        flags['MODEL_CONTOUR_FAILED']=True
 
-    ret2,th2 = cv.threshold(gray,thresh-35,256,cv.THRESH_BINARY)
-    contours,hierarchy = cv.findContours(th2, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-    if len(contours) != 0:
-        # find the biggest contour (c) by the area
-        stingc = max(contours, key = cv.contourArea)
-        if draw:
-            cv.drawContours(orig, stingc, -1, (0,255,0), 1)
-    else:
-        if log is not None:
-            log.write('no GRAY sting contours found at thresh')
-        return None
+    contour_dict ={'MODEL':modelC,'SHOCK':None}
+    
+    return contour_dict,flags
 
-    return c,stingc
+def contoursAutoHSV(orig,log=None,flags={'UNDEREXPOSED':False}):
+    """
+    Find contours using default union of multiple HSV ranges.
+    Uses the BGR-HSV transformation to increase contrast.
 
-def contoursAutoHSV(orig,flags={'DIM_MODEL':False,'DIM_SHOCK':False, 'MODEL_FRACTION':0.05},
-                log=None):
+    :param orig: opencv 8bit BGR image
+    :param flags: dictionary with flags
+    :param log: log object
+    :returns: model contour, shock contour, flags
+    """
+
     img = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
-    npx = orig.size
 
     ### HSV pixel ranges for models taken from sample frames
     model_ranges  = np.array([[(0,0,208),   (155,0,155),  (13,20,101), (0,190,100),  (12,150,130)], 
-                          [(180,70,255),(165,125,255),(33,165,255),(13,245,160),(25,200,250)]])
+                              [(180,70,255),(165,125,255),(33,165,255),(13,245,160),(25,200,250)]])
     dim_model =np.array([[(7,0,8)],[(20,185,101)]])
 
     ### HSV pixel ranges for shocks taken from sample frames
     shock_ranges = np.array([[(125,78,115)], 
                             [(145,190,230)]])
     dim_shocks = np.array([[(125,100,35), (140,30,20), (118,135,30)], 
-                        [(165,165,150),(156,90,220),(128,194,125)]])
+                           [(165,165,150),(156,90,220),(128,194,125)]])
     
     # Append additional ranges for underexposed images
-    if flags['DIM_MODEL']:
+    if flags['UNDEREXPOSED']:
         model_ranges = np.hstack((model_ranges,dim_model))
-    if flags['DIM_SHOCK']:
-        shock_ranges = np.hstack((shock_ranges,dim_shocks))
 
     # Apply shock filter and extract shock contour
     shockfilter = filter_hsv_ranges(img,shock_ranges)
-    shockcontours,hierarchy = cv.findContours(shockfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    if shockfilter.sum() < 500:
+        flags['DIM_SHOCK'] = True
+        shock_ranges = np.hstack((shock_ranges,dim_shocks))
+        shockfilter = filter_hsv_ranges(img,shock_ranges)
+    shockcontours,hierarchy = cv.findContours(shockfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    plt.imshow(shockfilter)
+    plt.show()
 
-    # find the biggest contour (c) by area
+    # find the biggest shock contour (shockC) by area
     if len(shockcontours) == 0:
-        flags['SHOCK_CONTOUR'] = None
+        shockC = None
+        flags['SHOCK_CONTOUR_FAILED']=True
         if log is not None:
             log.write('no shock contours found')
     else:
-        c = max(shockcontours, key = cv.contourArea)
-        if cv.contourArea(c) > npx*flags['MODEL_FRACTION']:
-            flag['SHOCK_CONTOUR'] = c
-        else:
-            flags['SHOCK_CONTOUR'] = None
+        shockC = max(shockcontours, key = cv.contourArea)
 
     # Apply model filter and extract model contour
     modelfilter = filter_hsv_ranges(img,model_ranges)
-    modelcontours,hierarchy = cv.findContours(modelfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    if flags['UNDEREXPOSED']:
+        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(5,5))
+        modelfilter = cv.morphologyEx(modelfilter, cv.MORPH_OPEN, kernel)
+    modelcontours,hierarchy = cv.findContours(modelfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-    # find the biggest contour (c) by area
+    # find the biggest model contour (modelC) by area
     if len(modelcontours) == 0:
-        flags['MODEL_CONTOUR'] = None
+        modelC = None
+        flags['MODEL_CONTOUR_FAILED'] = True
         if log is not None:
             log.write('no model contours found')
     else:
-        c = max(modelcontours, key = cv.contourArea)
-        if cv.contourArea(c) > npx*flags['MODEL_FRACTION']:
-            flag['MODEL_CONTOUR'] = c
-        else:
-            flags['MODEL_CONTOUR'] = None
+        modelC = max(modelcontours, key = cv.contourArea)
     
-    return flags
+    contour_dict ={'MODEL':modelC,'SHOCK':shockC}
 
-def contoursHSV(orig,draw=False,plot=False,log=None,
-                minHue=95,maxHue=121,flags=None,
-                modelpercent=.005,intensityMin=None):
+    return contour_dict,flags
+
+def contoursHSV(orig,log=None,
+                minHSVModel=(95,0,150),maxHSVModel=(121,125,255),
+                minHSVShock=(125,78,115),maxHSVShock=(145,190,230) ):
     """
-    Find contours for good images and underexposed images.
-    Uses the BGR-HSV transformation twice to increase edge contrast.
-    Value channel of first HSV transform is retained as well.
+    Find contours using HSV ranges image.
+    Uses the BGR-HSV transformation to increase contrast.
 
     :param orig: opencv 8bit BGR image
-    :param minHSV: minimum tuple for HSV-sq transform
-    :param maxHSV: maximum tuple for HSV-sq transform
-    :param stingMinHSV: minimum tuple for HSV-sq transform
-    :param stingMaxHSV: maximum tuple for HSV-sq transform
-    :param modelpercent: minimum percent area for model id
-    :param draw: boolean, if True draws on orig image
-    :param plot: boolean, if True plots orig image & HSV-sq image
-    :returns: success boolean, model contour, sting contour
+    :param minHSVModel: minimum tuple for HSV range
+    :param maxHSVModel: maximum tuple for HSV range
+    :param minHSVShock: minimum tuple for HSV range
+    :param maxHSVShock: maximum tuple for HSV range
+    :returns: model contour, shock contour
     """
 
+    flags={'MODEL_CONTOUR_FAILED':False,'SHOCK_CONTOUR_FAILED':False}
     # Load an color image in HSV, apply HSV transform again
     hsv_ = cv.cvtColor(orig, cv.COLOR_BGR2HSV)
-    hsv_= cv.GaussianBlur(hsv_, (5, 5), 0)
-    inten = hsv_[:,:,2]
-    histr = cv.calcHist( [inten], None, None, [256], (0, 256))
-
-    minHSV = (int(minHue),0,int(intensityMin))
-    maxHSV = (int(maxHue),255,255)
-
-    stingMinHSV = (int(minHue)-35,0,int(intensityMin/3.))
-    stingMaxHSV = (int(maxHue)+30,255,255)
+    hsv  = cv.GaussianBlur(hsv_, (5, 5), 0)
     
-    hsv = cv.cvtColor(hsv_, cv.COLOR_RGB2HSV)
-    npx = inten.size
+    ### Model contours
+    modelmask = cv.inRange(hsv, minHSVModel,maxHSVModel)
+    modelcontours,hierarchy = cv.findContours(modelmask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     
-    # retrieve original hsv intensity
-    hsv[:,:,2] = inten
-
-    # Plot colorspaces
-    if plot:
-        print("min max HSV: ", minHSV,maxHSV)
-        plt.figure(figsize=(8, 16))
-        rgb = orig[...,::-1].copy()
-        plt.subplot(2,2,1),plt.imshow(rgb)
-        plt.title('RGB colorspace')
-        plt.subplot(2,2,2),plt.imshow(hsv_)
-        plt.title('HSV colorspace')
-        plt.subplot(2,2,3),plt.imshow(hsv)
-        plt.title('HSV-sq colorspace')
-        plt.subplot(2,2,4),plt.plot(histr/npx)
-        plt.ylim([0,modelpercent/2])
-        plt.title("Hue Histogram")
-        plt.tight_layout()
-        plt.show()
-    ### Find model contours
-    maskHSV = cv.inRange(hsv, minHSV,maxHSV)
-    contours,hierarchy = cv.findContours(maskHSV, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-    
-    ### Sting adaptor contours
-    stinghsv=cv.GaussianBlur(hsv, (15, 15), 0)
-    stingMaskHSV = cv.inRange(stinghsv, stingMinHSV, stingMaxHSV)
-    stingContours,stingHierarchy = cv.findContours(stingMaskHSV, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-
-    if len(contours) != 0:
-        # find the biggest contour (c) by the area
-        c = max(contours, key = cv.contourArea)
-        if plot:
-            print(cv.contourArea(c)/npx)
-        #cv.drawContours(orig, c, -1, (255,0,0), 1)
-        
-    if len(stingContours) !=0:
-        # find the biggest contour (c) by the area
-        stingc = max(stingContours, key = cv.contourArea)
-        if cv.contourArea(stingc) < npx*modelpercent:
-            if log is not None:
-                log.write('no model, HSV-sq contours area < %f'%modelpercent)
-            return None
-        if len(contours) == 0 or cv.contourArea(c) < npx*modelpercent:
-            c = stingc
-            if log is not None:
-                log.write('no model contour, using stingc only')
-    else:
+    # find the biggest model contour (modelC) by area
+    if len(modelcontours) == 0:
+        modelC = None
+        flags['MODEL_CONTOUR_FAILED'] = True
         if log is not None:
-            log.write('no HSV-sq contours found')
-        return None
-    
-    if draw:
-        cv.drawContours(orig, c, -1, (255,0,0), 1)
-        cv.drawContours(orig, stingc, -1, (0,255,0), 1)
+            log.write('no shock contours found')
+    else:
+        modelC = max(modelcontours, key = cv.contourArea)
 
-    # Plot colorspaces
-    if plot:
-        plt.figure(figsize=(8, 16))
-        rgb = orig[...,::-1].copy()
-        plt.subplot(2,1,1),plt.imshow(rgb)
-        plt.title('RGB colorspace')
-        plt.subplot(2,1,2),plt.imshow(hsv)
-        plt.title('HSV-sq colorspace')
-        plt.tight_layout()
-        plt.show()
-    
-    return c,stingc
+    ### Shock contours
+    shockmask = cv.inRange(hsv, minHSVShock, maxHSVShock)
+    shockcontours,hierarchy = cv.findContours(shockmask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 
-def getROI(orig,c,stingc,draw=False,plot=False):
+    # find the biggest shock contour (shockC) by area
+    if len(shockcontours) == 0:
+        shockC = None
+        flags['SHOCK_CONTOUR_FAILED'] = True
+        if log is not None:
+            log.write('no shock contours found')
+    else:
+        shockC = max(shockcontours, key = cv.contourArea)
+    
+    contour_dict ={'MODEL':modelC,'SHOCK':shockC}
+
+    return contour_dict,flags
+
+def getROI(c1,c2):
     """
     Finds ROI for two contours
 
-    :param orig: opencv 8bit BGR image
-    :param c: opencv contour for model, shape(n,1,n)
-    :param stingc: opencv contour for sting, shape(n,1,n)
-    :param draw: boolean, if True draws on orig image
-    :param plot: boolean, if True plots orig image & HSV-sq image
+    :param c1: opencv contour for model, shape(n,1,n)
+    :param c2: opencv contour for sting, shape(n,1,n)
     :returns: ROI
     """
     ### Bounding box
-    x,y,w,h = cv.boundingRect(c)
-    xs,ys,ws,hs = cv.boundingRect(stingc)
+    x,y,w,h = cv.boundingRect(c1)
+    xs,ys,ws,hs = cv.boundingRect(c2)
 
     x1,x2 = min(x,xs),max(x+w,xs+ws)
     y1,y2 = min(y,ys),max(y+h,ys+hs)
 
     ROI = (x1,y1,x2-x1,y2-y1)
-    boxes = ((x,y,w,h),(xs,ys,ws,hs))
-
-    ### Draw features
-    if draw:
-        cv.rectangle(orig,ROI,(255,255,255))
-        cv.drawContours(orig, c, -1, (255,0,0),1)
-        cv.drawContours(orig, stingc, -1, (0,255,0), 1)
-
-    if plot:
-        # show the images
-        plt.figure()
-        plt.title("Plotting getROI")
-        rgb = orig[...,::-1].copy()
-        plt.imshow(rgb)
-        plt.tight_layout()
-        plt.show()
+    
     return ROI
 
-def getEdgeFromContour(c,flowRight,draw=False,color=(255,0,0)):
+def getEdgeFromContour(c,flow_direction):
     """
     Find front edge of contour given flow direction
 
     :param c: opencv contour, shape(n,1,n)
-    :param flowRight: boolean for flow direction
+    :param flow_direction: 'left' or 'right'
     :returns: frontedge, contour of front edge
     """
     ### contours are oriented counterclockwise from top left
     ymin_ind = c[:,0,1].argmin()
     ymax_ind = c[:,0,1].argmax()
-    if flowRight:
+    if flow_direction=='right':
         frontedge = c[ymin_ind:ymax_ind,:,:]
     else:
         frontedge = c[ymax_ind:,:,:]
-    if draw:
-        cv.drawContours(orig, frontedge, -1, color, 2)
     return frontedge
-
-def combineEdges(c,stingc,cutoff=50):
-    """
-    Combine model and sting contours to capture
-    front corners of models
-
-    :param c: opencv contour for model, shape(n,1,n)
-    :param stingc: opencv contour for sting, shape(n,1,n)
-    :param cutoff: integer, # of elements at edge of model contour to clip
-    :returns: merged contour
-    """
-    lowcut,highcut =cutoff,cutoff
-
-    ### top corner
-    pc = c[lowcut,0,:]
-    ind = np.where(stingc[:,0,0] == pc[0])[0][0]
-    mt=stingc[:ind+1,0,:]
-
-    #linear offset correction
-    delta = stingc[ind,:,:] - pc
-
-    if abs(delta[0][1]) > 15:
-        lowcut +=20
-        pc = c[lowcut,0,:]
-        ind = np.where(stingc[:,0,0] == pc[0])[0][0]
-        delta = stingc[ind,:,:] - pc
-        mt=stingc[:ind+1,0,:]
-    s = np.linspace(0,1,ind+1)
-    ds = (delta*s[:, np.newaxis]).astype(np.int32)
-    mt -= ds
-
-    ### Bottom corner
-    pc = c[-(highcut+1),:,:]
-    ind = np.where(stingc[:,0,0] == pc[0,0])[0][-1]
-    mb=stingc[ind:,0,:]
-
-    #linear offset correction
-    delta = stingc[ind,:,:] - pc
-    if abs(delta[0][1]) > 15:
-        highcut +=20
-        pc = c[-(highcut+1),:,:]
-        ind = np.where(stingc[:,0,0] == pc[0,0])[0][-1]
-        delta = stingc[ind,:,:] - pc
-        mb=stingc[ind:,0,:]
-    s = np.linspace(1,0,len(mb))
-    ds = (delta*s[:, np.newaxis]).astype(np.int32)
-    mb -= ds
-
-    # merge edge corners with center edge
-    cn = np.append(mt[:,np.newaxis,:],c[lowcut:-highcut,:,:],axis=0)
-    cn = np.append(cn,mb[:,np.newaxis,:],axis=0)
-
-    return cn
 
 def smooth(x,window_len=11,window='hanning'):
     """smooth the data using a window with requested size.

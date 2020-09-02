@@ -4,10 +4,9 @@ import cv2 as cv
 import os
 import matplotlib.pyplot as plt
 from glob import glob
-from utils.Frame import getModelProps
 from models import Video, FrameMeta, VideoMeta
-from utils.Functions import splitfn,contoursHSV,contoursGRAY,getROI, convert_mask_gray_to_BGR
-from utils.Functions import getEdgeFromContour,combineEdges,convert_mask_BGR_to_gray
+from utils.Functions import splitfn,contoursHSV,contoursGRAY,convert_mask_gray_to_BGR
+from utils.Functions import getEdgeFromContour,convert_mask_BGR_to_gray
 from utils.Grabcut import GrabCut
 
 ##fname = "AHF335Run001_EastView_1.mp4"
@@ -23,7 +22,6 @@ videopaths = glob(filemask)
 print(videopaths)
 
 SELECT_FRAMES = True
-MANUAL_ADJUST = False
 MAKE_MASKS = False
 
 #### Select frames per video, create pngs & meta files
@@ -34,14 +32,12 @@ def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], nframes=8, COUNTER
         fname = name+ext;print("### "+ name)
         
         vmeta = VideoMeta(folder+'/'+name+'.meta')
-        cap = cv.VideoCapture(path)
+        vid = Video(path)
         
         for fnumber in np.linspace(vmeta.FIRST_GOOD_FRAME, vmeta.LAST_GOOD_FRAME, nframes):
             # Capture frame-by-frame
 
-            cap.set(cv.CAP_PROP_POS_FRAMES,int(fnumber))
-            ret, frame = cap.read()
-
+            frame = vid.get_frame(int(fnumber))
             fname = "frame_%04d"%COUNTER
             cv.imwrite(fd+ fname+".png",frame)
 
@@ -55,9 +51,7 @@ def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], nframes=8, COUNTER
         
         for fnumber in addframes:
             # Capture frame-by-frame
-            cap.set(cv.CAP_PROP_POS_FRAMES,int(fnumber))
-            ret, frame = cap.read()
-
+            frame = vid.get_frame(int(fnumber))
             fname = "frame_%04d"%COUNTER
             cv.imwrite(fd+ fname+".png",frame)
 
@@ -69,7 +63,7 @@ def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], nframes=8, COUNTER
             COUNTER += 1
 
         # When everything done, release the capture
-        cap.release()
+        vid.close()
 
 if SELECT_FRAMES:
     select_frames(videopaths)
@@ -142,14 +136,6 @@ if MAKE_MASKS:
             finalmask = grab_shock(frame,modelmask)
         
             cv.imwrite(mpath,finalmask)
-
-# Manual adjustment of individual masks
-if MANUAL_ADJUST:
-    folder = "./train_frames/"
-    fname = "frame_0080"
-    a = FrameMeta(folder+fname+".meta")
-    frame = cv.imread(folder+fname+".png", flags=cv.IMREAD_COLOR)
-    
 
 
 

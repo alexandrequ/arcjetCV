@@ -1,10 +1,12 @@
 import os
+import abc
 import cv2 as cv
 import numpy as np
-from utils.Functions import splitfn,contoursHSV,contoursGRAY,getROI      
+from utils.Functions import splitfn,contoursHSV,contoursGRAY
+from utils.Functions import getEdgeFromContour,contoursAutoHSV
 
-class Processor(object):
-    ''' Template class for frame processing classes
+class ImageProcessor(object):
+    ''' Abstract base class for image processing
 
     Attributes:
         WIDTH (int): openCV image width
@@ -12,31 +14,85 @@ class Processor(object):
         SHAPE (tuple): openCV image shape
         CHANNELS (int): openCV number of channels (1 or 3)
         CROP (list): [[ymin,ymax],[xmin,xmax]]
-        FLOW_DIRECTION (dict): direction of flow
+        values (dict): for countours, values
+        flags (dict): for errors, flags
     '''
+    __metaclass__ = abc.ABCMeta
 
-    def __init__(self, frame, crop_range=None, flow_direction=None):
+    @abc.abstractmethod
+    def __init__(self, frame, crop_range=None):
         '''initialize object
         
         :param frame: opencv image (RGB or grayscale)
         :param crop_range (list): [[ymin,ymax],[xmin,xmax]]
-        :param flow_direction (dict): direction of flow
         '''
         self.SHAPE = frame.shape
+        self.FRAME = frame
         self.HEIGHT = self.SHAPE[0]
         self.WIDTH = self.SHAPE[1]
+        self.values = {}
+        self.flags = {}
         if len(frame.shape) == 3:
             self.CHANNELS = self.SHAPE[2]
         else:
             self.CHANNELS = 1
-        if flow_direction is None:
-            self.FLOW_DIRECTION = self.get_flow_direction(frame)
         if crop_range is None:
             self.CROP = [[0,self.HEIGHT], [0,self.WIDTH]]
         else:
             self.CROP = crop_range
+        # Crop frame to ROI
+        try:
+            if self.CHANNELS == 1:
+                self.FRAME_CROP = frame[self.CROP[0][0]:self.CROP[0][1], self.CROP[1][0]:self.CROP[1][1]]
+            else:
+                self.FRAME_CROP = frame[self.CROP[0][0]:self.CROP[0][1], self.CROP[1][0]:self.CROP[1][1], :]
+        except IndexError:
+            self.FRAME_CROP = None
+            raise IndexError("ERROR: processor crop window %s incompatible with given frame shape %s"%(str(self.CROP),str(frame.shape)))
 
         return
+
+    @abc.abstractmethod
+    def preprocess(self, frame, argdict):
+        ''' preprocess img, crop, get flags '''
+        return
+    
+    @abc.abstractmethod
+    def segment(self, frame, argdict):
+        ''' segment image, acquire contours '''
+        return
+
+    @abc.abstractmethod
+    def reduce(self, input, argdict):
+        ''' get metrics, reduce to minimum set '''
+        return
+
+    @abc.abstractmethod
+    def process(self, frame, argdict):
+        '''fully process image'''
+        return
+
+class ArcjetProcessor(ImageProcessor):
+    ''' Abstract base class for image processing
+
+    Attributes:
+        WIDTH (int): openCV image width
+        HEIGHT (int): openCV image height
+        SHAPE (tuple): openCV image shape
+        CHANNELS (int): openCV number of channels (1 or 3)
+        CROP (list): [[ymin,ymax],[xmin,xmax]]
+        values (dict): for countours, values
+        flags (dict): for errors, flags
+        FLOW_DIRECTION (str): 'left' or 'right'
+        FRAME: openCV image
+        FRAME_CROP: cropped image
+    '''
+    def __init__(self, frame, crop_range=None, flow_direction=None):
+        super(ArcjetProcessor,self).__init__(frame, crop_range=crop_range)
+        if flow_direction is None:
+            self.FLOW_DIRECTION = self.get_flow_direction(frame)
+        else:
+            self.FLOW_DIRECTION = flow_direction
 
     def get_flow_direction(self, frame):
         '''infer flow direction
@@ -94,49 +150,81 @@ class Processor(object):
         modelvis = (histr[12:250]/imgsize > 0.00).sum() != 1
         modelvis *= histr[50:250].sum()/imgsize > modelpercent
         argdict['MODEL_VISIBLE'] = modelvis
-        argdict['OVEREXPOSED'] = modelvis = histr[243:].sum()/imgsize > modelpercent
-        argdict['UNDEREXPOSED'] = modelvis= histr[150:].sum()/imgsize < modelpercent
+        argdict['OVEREXPOSED'] =  histr[243:].sum()/imgsize > modelpercent
+        argdict['UNDEREXPOSED'] =  histr[150:].sum()/imgsize < modelpercent
 
         return argdict
 
     def preprocess(self, frame, argdict):
         '''acquire flags, apply crop, get flow direction'''
-        # Get flow direction
-        if self.FLOW_DIRECTION is None:
-            self.FLOW_DIRECTION = self.get_flow_direction(frame)
-
         # Crop frame to ROI
         try:
             if self.CHANNELS == 1:
-                img_crop = frame[self.CROP[0][0]:self.CROP[0][1], self.CROP[1][0]:self.CROP[1][1]]
+                self.FRAME_CROP = frame[self.CROP[0][0]:self.CROP[0][1], self.CROP[1][0]:self.CROP[1][1]]
             else:
-                img_crop = frame[self.CROP[0][0]:self.CROP[0][1], self.CROP[1][0]:self.CROP[1][1], :]
+                self.FRAME_CROP = frame[self.CROP[0][0]:self.CROP[0][1], self.CROP[1][0]:self.CROP[1][1], :]
         except IndexError:
+            self.FRAME_CROP = None
             raise IndexError("ERROR: processor crop window %s incompatible with given frame shape %s"%(str(self.CROP),str(frame.shape)))
 
-        argdict = self.get_image_flags(img_crop, argdict)
-        return img_crop, argdict
+        # Get flow direction
+        if self.FLOW_DIRECTION is None:
+            self.FLOW_DIRECTION = self.get_flow_direction(frame)
+        
+        argdict = self.get_image_flags(self.FRAME_CROP, argdict)
+        return self.FRAME_CROP, argdict
 
     def segment(self, img_crop, argdict):
-        '''segment image, acquire contours'''
-        # process img_crop here
-        rawdatadict = {} #{"model":modelcontour,"shock":shockcontour}
-        return rawdatadict, argdict #rawdatadict
+        ''' segment image using one of several methods'''
+        if argdict["SEGMENT_METHOD"] == 'AutoHSV':
+            #use contoursAutoHSV
+            contour_dict, flags = contoursAutoHSV(img_crop, flags=argdict)
 
-    def reduce(self,rawdatadict,argdict):
-        '''get leading edge, interpolate to std shape'''
-        # process rawdatadict here
-        datadict ={} #{"model":modeledge,"shock":shockedge}
-        return datadict, argdict
-    
+        elif argdict["SEGMENT_METHOD"] == 'HSV':
+            #use contoursHSV
+            contour_dict, flags = contoursHSV(img_crop,log=None,
+                                        minHSVModel=(95,0,150),maxHSVModel=(121,125,255),
+                                        minHSVShock=(125,78,115),maxHSVShock=(145,190,230))
+
+        elif argdict["SEGMENT_METHOD"] == 'GRAY':
+            #use contoursGRAY
+            contour_dict, flags = contoursGRAY(img_crop,log=None)
+
+        elif argdict["SEGMENT_METHOD"] == 'CNN':
+            #use machine learning CNN
+            pass
+        
+        argdict.update(flags)
+        return contour_dict, argdict
+
+    def reduce(self, contour_dict, argdict):
+        ''' get edges and metrics '''
+        edges = {}
+        for key in contour_dict.keys():
+            c = contour_dict[key]
+            if c is not None:
+                edges[key] = getEdgeFromContour(c,self.FLOW_DIRECTION)
+            else:
+                edges[key] = None
+        return edges, argdict
+
     def process(self, frame, argdict):
-        '''fully process image'''
-        img_crop, argdict = self.preprocess(frame,argdict)
-        rawdatadict, argdict = self.segment(img_crop,argdict)
-        datadict, argdict = self.reduce(rawdatadict,argdict)
-        return datadict, argdict
+        ''' fully process image '''
+        frame_crop, argdict = self.preprocess(frame, argdict)
+        contour_dict, argdict = self.segment(frame_crop, argdict)
+        edges, argdict = self.reduce(contour_dict, argdict)
+        return edges, argdict
 
 class Video(object):
+    ''' Convenience wrapper for opencv video capture 
+
+    Methods:
+        get_frame: gets arbitrary frame
+        get_next_frame: gets next frame
+        get_writer: get a video writer object
+        close: closes video and writer object
+        close_writer: closes writer object
+    '''
     def __init__(self, path):
         ### path variables
         self.fpath = path
@@ -164,15 +252,13 @@ class Video(object):
         return self.last_frame
 
     def get_frame(self,index):
-        self.cap.set(cv.CAP_PROP_POS_FRAMES,index);
+        self.cap.set(cv.CAP_PROP_POS_FRAMES,index)
         ret, self.last_frame = self.cap.read()
         return self.last_frame
 
-    def count_frames(self):
-        self.nframes = int(self.cap.get(cv.CAP_PROP_FRAME_COUNT))
-        return self.nframes
-
-    def close_video(self):
+    def close(self):
+        if self.writer is not None:
+            self.writer.release()
         self.cap.release()
 
     def get_writer(self):
@@ -184,6 +270,9 @@ class Video(object):
         self.writer.release()
 
 class VideoMeta(object):
+    ''' Class designed to save/load video metadata in readable txt format
+            creates *.meta files with useful information
+    '''
 
     inttype = ['WIDTH','HEIGHT','CHANNELS','NFRAMES',
                 'FIRST_GOOD_FRAME','LAST_GOOD_FRAME',
@@ -254,12 +343,18 @@ class VideoMeta(object):
             else:
                 setattr(self,attrs[0],str(attrs[1].strip()) )
 
+    def crop_range(self):
+        return [[self.YMIN,self.YMAX],[self.XMIN, self.XMAX]]
+
 class FrameMeta(VideoMeta):
+    ''' Stores frame metadata in text files.
+
+    '''
 
     def __init__(self,path,fnumber=None,videometa=None):
         super(FrameMeta,self).__init__(path)
         
-        if not os.path.exists(path):
+        if not os.path.exists(path) and videometa is not None:
             self.load(path=videometa.path)
             self.FRAME_INDEX = fnumber
             
@@ -279,11 +374,21 @@ if __name__ == '__main__':
     vm = VideoMeta(path+fname+".meta")
     video = Video(path+fname+".mp4")
     print(video)
-    frame = video.get_frame(vm.FIRST_GOOD_FRAME)
-    p = Processor(frame)
+    frame = video.get_frame(vm.FIRST_GOOD_FRAME+110)
+
+    # Process frame
+    p = ArcjetProcessor(frame,crop_range=vm.crop_range(),flow_direction = vm.FLOW_DIRECTION)
+    contour_dict,argdict = p.process(frame, {'SEGMENT_METHOD':'AutoHSV'})
+    print(argdict,contour_dict)
+
+    # Plot edges
+    c = contour_dict['MODEL']
+    import matplotlib.pyplot as plt
+    plt.plot(c[:,0,0],c[:,0,1],'g-')
+    plt.show()
 
     # cv.imwrite("test.png",frame)
     # fm = FrameMeta("test.meta",vm.FIRST_GOOD_FRAME,vm)
     # fm.write()
     # print(fm)
-    video.close_video()
+    video.close()

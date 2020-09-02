@@ -65,7 +65,7 @@ dim_shocks = np.array([[(125,100,35), (140,30,20), (118,135,30)],
 rm,gm,bm = np.zeros(1,np.uint8),np.zeros(1,np.uint8),np.zeros(1,np.uint8)
 rs,gs,bs = np.zeros(1,np.uint8),np.zeros(1,np.uint8),np.zeros(1,np.uint8)
 rb,gb,bb = np.zeros(1,np.uint8),np.zeros(1,np.uint8),np.zeros(1,np.uint8)
-for path in framepaths[0:8]:
+for path in framepaths[73:]:
     folder, name, ext = splitfn(path)
     frame = cv.imread(path,1)
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
@@ -80,7 +80,13 @@ for path in framepaths[0:8]:
     
     if 0:
         model_ranges = np.hstack((model_ranges,underexp_model))
+        
     modelfilter = filter_hsv_ranges(img,model_ranges,show_range=False)
+    if 1:
+        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(5,5))
+        modelfilter = cv.morphologyEx(modelfilter, cv.MORPH_OPEN, kernel)
+        # kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(3,3))
+        # modelfilter = cv.morphologyEx(modelfilter, cv.MORPH_OPEN, kernel)
     if 1:
         shock_ranges = np.hstack((shock_ranges,dim_shocks))
         print("dim shock")
