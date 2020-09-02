@@ -13,6 +13,7 @@ from utils.Models import FrameMeta
 from keras.models import Input,load_model
 from keras.layers import Dropout,concatenate,UpSampling2D
 from keras.layers import Conv2D, MaxPooling2D
+from keras_segmentation.models.model_utils import get_segmentation_model
 from keras_segmentation.predict import predict_multiple
 from keras_segmentation.train import find_latest_checkpoint
 from extremities import extremity
@@ -45,7 +46,6 @@ def postprocessing(path, folder, rnorms=[-.75,-.5,0,.5,0.75],
     flowDir = flowDirection(path, FIRST_FRAME)
     print("flow direction :")
     print(flowDir)
-
     ### Write output video
     if WRITEVIDEO:
         vid_cod = cv.VideoWriter_fourcc('M','J','P','G')
@@ -67,8 +67,6 @@ def postprocessing(path, folder, rnorms=[-.75,-.5,0,.5,0.75],
 
         ### Operations on the frame
         frame_ai = cnn_apply(frame, model)
-##        plt.imshow(frame_ai)
-##        plt.show()
 
         if WRITEVIDEO:
             output.write(frame_ai)
@@ -139,19 +137,16 @@ def flowDirection(path, FIRST_FRAME):
 
     return flowDirection
 
-def cnn_set(img):
+def cnn_set(img, n_classes = 3,
+            ckpath = "shock_detection/checkpoints_mosaic/mynet_arcjetCV"):
     height = img.shape[0]
     width= img.shape[1]
     hpx = height- height%4
     wpx = width- width%4
     input_height,input_width = hpx, wpx
-
-    n_classes = 3
-    epochs= 2
-    ckpath = "shock_detection/checkpoints_mosaic/mynet_arcjetCV"
-
+    
     ##############################################################################
-    img_input = Input(shape=(input_height,input_width , 3 ))
+    img_input = Input(shape=(input_height,input_width,n_classes ))
 
     conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(img_input)
     conv1 = Dropout(0.2)(conv1)
@@ -180,8 +175,7 @@ def cnn_set(img):
     out = Conv2D( n_classes, (1, 1) , padding='same')(conv5)
     ##############################################################################
 
-    from keras_segmentation.models.model_utils import get_segmentation_model
-    model = get_segmentation_model(img_input ,  out ) # this would build the segmentation model
+    model = get_segmentation_model(img_input ,  out ) # build the segmentation model
 
     latest_weights = find_latest_checkpoint(ckpath)
     model.load_weights(latest_weights)

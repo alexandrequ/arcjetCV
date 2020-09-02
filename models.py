@@ -350,20 +350,35 @@ class FrameMeta(VideoMeta):
     ''' Stores frame metadata in text files.
 
     '''
-
     def __init__(self,path,fnumber=None,videometa=None):
         super(FrameMeta,self).__init__(path)
         
         if not os.path.exists(path) and videometa is not None:
+            ### load video metadata
             self.load(path=videometa.path)
             self.FRAME_INDEX = fnumber
             
-            ### File parameters
+            ### restore frame file parameters
             folder, name, ext = splitfn(path)
             self.folder = folder
             self.name = name
             self.ext = ext
             self.path = path
+
+class Logger(object):
+    def __init__(self,filename,PRINT=True,FILEIO=False,prefix=''):
+        self.filename=filename
+        self.prefix = prefix
+        self.print = PRINT
+        self.fileio = FILEIO
+        
+    def write(self,line):
+        if self.print:
+            print(self.prefix+line.__str__())
+        if self.fileio:
+            fh = open(self.filename,'a')
+            fh.write(self.prefix+line.__str__()+'\n')
+            fh.close()
 
 if __name__ == '__main__':
     path = "/home/magnus/Desktop/NASA/arcjetCV/data/video/"

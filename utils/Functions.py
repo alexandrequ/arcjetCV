@@ -447,3 +447,29 @@ def convert_mask_gray_to_BGR(img):
     mask[:,:,2]= (img==0)*255
 
     return mask
+
+def annotateImage(orig,flags,top=True,left=True):
+    y,x,c = np.shape(orig)
+
+    if top:
+        yp = int(y*.025)
+    else:
+        yp = int(y*.85)
+    if left:
+        xp = int(x*.025)
+    else:
+        xp = int(y*.85)
+
+    offset=0
+    for key in flags.keys():
+        
+        if flags[key] and key != 'modelvis':
+            cv.putText(
+             orig, #numpy array on which text is written
+             "{0}: {1}".format(key,True), #text
+             (xp,yp+offset), #position at which writing has to start
+             cv.FONT_HERSHEY_SIMPLEX, #font family
+             1, #font size
+             (0, 0, 255, 255), #font color
+             3) #font stroke
+        offset += int(y*.035)

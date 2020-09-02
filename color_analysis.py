@@ -65,7 +65,11 @@ dim_shocks = np.array([[(125,100,35), (140,30,20), (118,135,30)],
 rm,gm,bm = np.zeros(1,np.uint8),np.zeros(1,np.uint8),np.zeros(1,np.uint8)
 rs,gs,bs = np.zeros(1,np.uint8),np.zeros(1,np.uint8),np.zeros(1,np.uint8)
 rb,gb,bb = np.zeros(1,np.uint8),np.zeros(1,np.uint8),np.zeros(1,np.uint8)
-for path in framepaths[73:]:
+
+cropshapes_x = []
+cropshapes_y = []
+
+for path in framepaths[0:]:
     folder, name, ext = splitfn(path)
     frame = cv.imread(path,1)
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
@@ -76,6 +80,8 @@ for path in framepaths[73:]:
     framemeta = FrameMeta(folder+'/'+name+".meta")
 
     img = frame[framemeta.YMIN:framemeta.YMAX,framemeta.XMIN:framemeta.XMAX,:]
+    cropshapes_y.append(framemeta.YMAX-framemeta.YMIN)
+    cropshapes_x.append(framemeta.XMAX-framemeta.XMIN)
     # HSV section
     
     if 0:
@@ -92,19 +98,19 @@ for path in framepaths[73:]:
         print("dim shock")
     shockfilter = filter_hsv_ranges(img,shock_ranges,show_range=False)
     
-    npx = img.shape[0]*img.shape[1]
-    print(modelfilter.sum()/npx/255)
-    alpha = .5
-    beta = (1.0 - alpha)
-    shockmask = convert_mask_gray_to_BGR(shockfilter)
-    dst = cv.addWeighted(img, alpha, shockmask, beta, 0.0)
-    plt.subplot(131)
-    plt.imshow(img)
-    plt.subplot(132)
-    plt.imshow(shockfilter)
-    plt.subplot(133)
-    plt.imshow(modelfilter)
-    plt.show()
+    # npx = img.shape[0]*img.shape[1]
+    # print(modelfilter.sum()/npx/255)
+    # alpha = .5
+    # beta = (1.0 - alpha)
+    # shockmask = convert_mask_gray_to_BGR(shockfilter)
+    # dst = cv.addWeighted(img, alpha, shockmask, beta, 0.0)
+    # plt.subplot(131)
+    # plt.imshow(img)
+    # plt.subplot(132)
+    # plt.imshow(shockfilter)
+    # plt.subplot(133)
+    # plt.imshow(modelfilter)
+    # plt.show()
 
     R,G,B = img[:,:,0],img[:,:,1],img[:,:,2]
 
