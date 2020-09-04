@@ -17,15 +17,20 @@ VIDEO_FOLDER = "data/video/"
 FRAME_FOLDER = "data/sample_frames/"
 MASK_FOLDER = "data/sample_masks/"
 
-filemask = VIDEO_FOLDER + "*.mp4"
+filemask = VIDEO_FOLDER + "HyMETS*.mp4"
 videopaths = glob(filemask)
 print(videopaths)
 
-SELECT_FRAMES = True
-MAKE_MASKS = False
+SELECT_FRAMES = False
+MAKE_MASKS = True
+EDIT_FRAMES = False
+edit_frame_list = [6,9,13,14]
+ADD_FRAMES = False
+add_frame_list = [1,10,25,50,100,150,200,300]
 
 #### Select frames per video, create pngs & meta files
-def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], nframes=8, COUNTER = 0):
+def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], 
+                  nframes=8, COUNTER = 0, offset=0):
     ''' selects frames from videos and creates metadata files for each one'''
     for path in videopaths:
         folder, name, ext = splitfn(path)
@@ -37,7 +42,7 @@ def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], nframes=8, COUNTER
         for fnumber in np.linspace(vmeta.FIRST_GOOD_FRAME, vmeta.LAST_GOOD_FRAME, nframes):
             # Capture frame-by-frame
 
-            frame = vid.get_frame(int(fnumber))
+            frame = vid.get_frame(int(fnumber)+offset)
             fname = "frame_%04d"%COUNTER
             cv.imwrite(fd+ fname+".png",frame)
 
@@ -50,6 +55,7 @@ def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], nframes=8, COUNTER
             COUNTER += 1
         
         for fnumber in addframes:
+            fnumber += vmeta.FIRST_GOOD_FRAME
             # Capture frame-by-frame
             frame = vid.get_frame(int(fnumber))
             fname = "frame_%04d"%COUNTER
@@ -65,9 +71,11 @@ def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], nframes=8, COUNTER
         # When everything done, release the capture
         vid.close()
 
+existing_frames = glob(FRAME_FOLDER+"*.png")
 if SELECT_FRAMES:
-    select_frames(videopaths)
-
+    select_frames(videopaths,nframes=16,COUNTER=len(existing_frames), addframes=add_frame_list)
+if ADD_FRAMES:
+    select_frames(videopaths, nframes=0,COUNTER=len(existing_frames), addframes=add_frame_list)
 
 ########################################################################
 ################### CREATE MASKS FOR ALL SAMPLES #######################
@@ -105,7 +113,11 @@ if MAKE_MASKS:
     ### Load existing images
     fpaths = sorted(glob(FRAME_FOLDER+ "*.png"))
 
-    for i in range(0,len(fpaths)):
+    if EDIT_FRAMES:
+        flist = edit_frame_list
+    else:
+        flist = range(160,len(fpaths))
+    for i in flist:
         # Load sample frame
         folder, name, ext = splitfn(fpaths[i])
         frame = cv.imread(fpaths[i],1)

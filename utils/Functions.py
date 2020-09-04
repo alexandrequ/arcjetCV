@@ -252,8 +252,8 @@ def contoursAutoHSV(orig,log=None,flags={'UNDEREXPOSED':False}):
         shock_ranges = np.hstack((shock_ranges,dim_shocks))
         shockfilter = filter_hsv_ranges(img,shock_ranges)
     shockcontours,hierarchy = cv.findContours(shockfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    plt.imshow(shockfilter)
-    plt.show()
+    # plt.imshow(shockfilter)
+    # plt.show()
 
     # find the biggest shock contour (shockC) by area
     if len(shockcontours) == 0:
@@ -271,6 +271,8 @@ def contoursAutoHSV(orig,log=None,flags={'UNDEREXPOSED':False}):
         modelfilter = cv.morphologyEx(modelfilter, cv.MORPH_OPEN, kernel)
     modelcontours,hierarchy = cv.findContours(modelfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
+    plt.imshow(modelfilter)
+    plt.show()
     # find the biggest model contour (modelC) by area
     if len(modelcontours) == 0:
         modelC = None
@@ -473,3 +475,9 @@ def annotateImage(orig,flags,top=True,left=True):
              (0, 0, 255, 255), #font color
              3) #font stroke
         offset += int(y*.035)
+
+def cropBGR(img, CROP):
+    return img[CROP[0][0]:CROP[0][1], CROP[1][0]:CROP[1][1], :]
+
+def cropGRAY(img, CROP):
+    return img[CROP[0][0]:CROP[0][1], CROP[1][0]:CROP[1][1]]

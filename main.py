@@ -19,14 +19,8 @@ from PyQt5.QtCore import Qt, QThread, QTimer,pyqtSignal,pyqtSlot
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtGui import QImage, QPixmap
 # import analysis functions
-from utils.Frame import getModelProps
 from utils.Calibrate import splitfn
-# import ML modules
-from keras.models import Input,load_model
-from keras.layers import Dropout,concatenate,UpSampling2D
-from keras.layers import Conv2D, MaxPooling2D
-from keras_segmentation.predict import predict_multiple
-from keras_segmentation.train import find_latest_checkpoint
+
 
 class MainWindow(QtWidgets.QMainWindow):
     # class constructor
@@ -229,93 +223,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.frame = cv.cvtColor(lab, cv.COLOR_LAB2BGR)
         cv.imshow("hello", self.frame)
 
-    def flowDirection(self, image):
-        gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-        gray = cv.GaussianBlur(gray, (11,11), 0)
-        (minVal, maxVal, minLoc, maxLoc) = cv.minMaxLoc(gray)
-
-        # display the results of the naive attempt
-        cv.imshow("Naive", image)
-
-
-        widthImg = image.shape[1]
-        widthLoc = maxLoc[1]
-
-        fluxLoc = widthLoc/widthImg
-
-        if fluxLoc > 0.5:
-            flowDirection = "left"
-        elif fluxLoc < 0.5:
-            flowDirection = "right"
-
-        print(flowDirection)
-
-
-    def cnn_set(self,img):
-
-        cv.imwrite("frame.png", img)
-
-        height = img.shape[0]
-        width= img.shape[1]
-        pix = max(width, height)- (max(width, height) % 4)
-        input_height,input_width = pix, pix
-
-        n_classes = 3
-        epochs= 2
-        ckpath = "ML/checkpoints_mosaic/mynet_arcjetCV"
-
-        ##############################################################################
-        img_input = Input(shape=(input_height,input_width , 3 ))
-
-        conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(img_input)
-        conv1 = Dropout(0.2)(conv1)
-        conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv1)
-        pool1 = MaxPooling2D((2, 2))(conv1)
-
-        conv2 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool1)
-        conv2 = Dropout(0.2)(conv2)
-        conv2 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv2)
-        pool2 = MaxPooling2D((2, 2))(conv2)
-
-        conv3 = Conv2D(128, (3, 3), activation='relu', padding='same')(pool2)
-        conv3 = Dropout(0.2)(conv3)
-        conv3 = Conv2D(128, (3, 3), activation='relu', padding='same')(conv3)
-
-        up1 = concatenate([UpSampling2D((2, 2))(conv3), conv2], axis=-1)
-        conv4 = Conv2D(64, (3, 3), activation='relu', padding='same')(up1)
-        conv4 = Dropout(0.2)(conv4)
-        conv4 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv4)
-
-        up2 = concatenate([UpSampling2D((2, 2))(conv4), conv1], axis=-1)
-        conv5 = Conv2D(32, (3, 3), activation='relu', padding='same')(up2)
-        conv5 = Dropout(0.2)(conv5)
-        conv5 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv5)
-
-        out = Conv2D( n_classes, (1, 1) , padding='same')(conv5)
-        ##############################################################################
-
-        from keras_segmentation.models.model_utils import get_segmentation_model
-        self.model = get_segmentation_model(img_input ,  out ) # this would build the segmentation model
-
-
-        latest_weights = find_latest_checkpoint(ckpath)
-        self.model.load_weights(latest_weights)
-
-        return self.model
-
-
-
-    def cnn_apply(self, img, model):
-
-        out = model.predict_segmentation(
-            inp = "frame.png",
-            out_fname = '"frame_out.png"', #out_dir+name+ext,
-            colors=[(0,0,255),(0,255,0),(255,0,0)]
-            )
-        self.frame_ai = cv.imread("frame_out.png")
-        return self.frame_ai
-
-
+    
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 

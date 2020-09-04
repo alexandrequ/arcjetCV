@@ -150,6 +150,10 @@ class GrabCut():
                 ret,thresh1 = cv.threshold(self.output,1,maskval,cv.THRESH_BINARY)
                 cv.imwrite(outname, thresh1)
                 print(" Result saved as image \n")
+            elif k == ord('g'):
+                thresh = int(input("Grayscale threshold? (0-255)"))
+                gray = cv.cvtColor(self.img2, cv.COLOR_BGR2GRAY)
+                self.mask[gray<thresh] = 0
             elif k == ord('r'): # reset everything
                 print("resetting \n")
                 self.rect = (0,0,1,1)
@@ -165,14 +169,12 @@ class GrabCut():
                 print(""" For finer touchups, mark foreground and background after pressing keys 0-3
                 and again press 'n' \n""")
                 try:
+                    bgdmodel = np.zeros((1, 65), np.float64)
+                    fgdmodel = np.zeros((1, 65), np.float64)
                     if (self.rect_or_mask == 0):         # grabcut with rect
-                        bgdmodel = np.zeros((1, 65), np.float64)
-                        fgdmodel = np.zeros((1, 65), np.float64)
                         cv.grabCut(self.img2, self.mask, self.rect, bgdmodel, fgdmodel, 1, cv.GC_INIT_WITH_RECT)
                         self.rect_or_mask = 1
                     elif self.rect_or_mask == 1:         # grabcut with mask
-                        bgdmodel = np.zeros((1, 65), np.float64)
-                        fgdmodel = np.zeros((1, 65), np.float64)
                         cv.grabCut(self.img2, self.mask, self.rect, bgdmodel, fgdmodel, 1, cv.GC_INIT_WITH_MASK)
                 except:
                     import traceback

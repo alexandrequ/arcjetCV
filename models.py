@@ -188,7 +188,11 @@ class ArcjetProcessor(ImageProcessor):
 
         elif argdict["SEGMENT_METHOD"] == 'GRAY':
             #use contoursGRAY
-            contour_dict, flags = contoursGRAY(img_crop,log=None)
+            try:
+                thresh = argdict["THRESHOLD"]
+            except:
+                thresh = 140
+            contour_dict, flags = contoursGRAY(img_crop,thresh=thresh,log=None)
 
         elif argdict["SEGMENT_METHOD"] == 'CNN':
             #use machine learning CNN
@@ -385,11 +389,12 @@ if __name__ == '__main__':
     fname = "AHF335Run001_EastView_5"
     #fname = "IHF360-003_EastView_3_HighSpeed"
     fname = "IHF338Run006_EastView_1"
+    fname = "HyMETS-PS03_90"
 
     vm = VideoMeta(path+fname+".meta")
     video = Video(path+fname+".mp4")
     print(video)
-    frame = video.get_frame(vm.FIRST_GOOD_FRAME+110)
+    frame = video.get_frame(vm.FIRST_GOOD_FRAME+1000)
 
     # Process frame
     p = ArcjetProcessor(frame,crop_range=vm.crop_range(),flow_direction = vm.FLOW_DIRECTION)
