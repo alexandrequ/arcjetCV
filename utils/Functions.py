@@ -188,7 +188,7 @@ def mask3(img,c):
     mask[:,:,1],mask[:,:,2] = mask[:,:,0],mask[:,:,0]
     return mask
 
-def contoursGRAY(orig,thresh=150,log=None):
+def contoursGRAY(orig,thresh=None,log=None):
     """
     Find contours for overexposed images
 

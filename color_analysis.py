@@ -7,10 +7,11 @@ from mayavi import mlab
 
 from models import FrameMeta, VideoMeta
 from utils.Functions import convert_mask_gray_to_BGR, convert_mask_BGR_to_gray, splitfn
+from utils.Functions import cropBGR, cropGRAY
 
 FRAME_FOLDER = "/home/magnus/Desktop/NASA/arcjetCV/data/sample_frames/"
 MASK_FOLDER = "/home/magnus/Desktop/NASA/arcjetCV/data/sample_masks/"
-regex = FRAME_FOLDER + "*.png"
+regex = FRAME_FOLDER + "frame_0???.png"
 framepaths = sorted(glob(regex))
 
 def get_RGB_hist(R,G,B):
@@ -50,12 +51,11 @@ def filter_hsv_ranges(hsv,ranges,show_range=False):
         if show_range:
             box(ranges[0][i],ranges[1][i])
     return maskHSV
-    #contours,hierarchy = cv.findContours(maskHSV, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     
 
-model_ranges  = np.array([[(0,0,208),   (155,0,155),  (13,20,101), (0,190,100),  (12,150,130)], 
+model_ranges  = np.array([[(0,0,170),   (155,0,155),  (13,20,101), (0,190,100),  (12,150,130)], 
                           [(180,70,255),(165,125,255),(33,165,255),(13,245,160),(25,200,250)]])
-underexp_model =np.array([[(7,0,8)],[(20,185,101)]])
+underexp_model =np.array([[(0,0,65)],[(20,200,255)]])
 
 shock_ranges = np.array([[(125,78,115)], 
                          [(145,190,230)]])
@@ -77,6 +77,7 @@ for path in framepaths[0:]:
     # hsvsq = cv.cvtColor(hsv, cv.COLOR_BGR2HSV)
     # hsvsq[:,:,2] = hsv[:,:,2]
     frame = hsv
+    mask = cv.imread(MASK_FOLDER+ name+ext,0)
     framemeta = FrameMeta(folder+'/'+name+".meta")
 
     img = frame[framemeta.YMIN:framemeta.YMAX,framemeta.XMIN:framemeta.XMAX,:]
@@ -84,30 +85,32 @@ for path in framepaths[0:]:
     cropshapes_x.append(framemeta.XMAX-framemeta.XMIN)
     # HSV section
     
-    if 0:
-        model_ranges = np.hstack((model_ranges,underexp_model))
+    # if 1:
+    #     model_ranges = np.hstack((model_ranges,underexp_model))
         
-    modelfilter = filter_hsv_ranges(img,model_ranges,show_range=False)
-    if 1:
-        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(5,5))
-        modelfilter = cv.morphologyEx(modelfilter, cv.MORPH_OPEN, kernel)
-        # kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(3,3))
-        # modelfilter = cv.morphologyEx(modelfilter, cv.MORPH_OPEN, kernel)
-    if 1:
-        shock_ranges = np.hstack((shock_ranges,dim_shocks))
-        print("dim shock")
-    shockfilter = filter_hsv_ranges(img,shock_ranges,show_range=False)
+    # modelfilter = filter_hsv_ranges(img,model_ranges,show_range=False)
+    # if 1:
+    #     kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(5,5))
+    #     modelfilter = cv.morphologyEx(modelfilter, cv.MORPH_OPEN, kernel)
+    #     # kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(3,3))
+    #     # modelfilter = cv.morphologyEx(modelfilter, cv.MORPH_OPEN, kernel)
+    # if 1:
+    #     shock_ranges = np.hstack((shock_ranges,dim_shocks))
+    #     print("dim shock")
+    # shockfilter = filter_hsv_ranges(img,shock_ranges,show_range=False)
     
     # npx = img.shape[0]*img.shape[1]
     # print(modelfilter.sum()/npx/255)
     # alpha = .5
     # beta = (1.0 - alpha)
-    # shockmask = convert_mask_gray_to_BGR(shockfilter)
-    # dst = cv.addWeighted(img, alpha, shockmask, beta, 0.0)
+    # mask = cropGRAY(mask,framemeta.crop_range()) 
+    # modelmask = convert_mask_gray_to_BGR(modelfilter)
+    # dst = cv.addWeighted(img, alpha, modelmask, beta, 0.0)
     # plt.subplot(131)
     # plt.imshow(img)
     # plt.subplot(132)
-    # plt.imshow(shockfilter)
+    # # plt.imshow(mask)
+    # plt.imshow(dst)
     # plt.subplot(133)
     # plt.imshow(modelfilter)
     # plt.show()
@@ -123,11 +126,9 @@ for path in framepaths[0:]:
     rm,gm,bm = np.append(rm,R[modelpx]), np.append(gm,G[modelpx]), np.append(bm,B[modelpx])
     rs,gs,bs = np.append(rs,R[shockpx]), np.append(gs,G[shockpx]), np.append(bs,B[shockpx])
     rb,gb,bb = np.append(rb,R[bgpx]), np.append(gb,G[bgpx]), np.append(bb,B[bgpx])
-# shockfilter = filter_hsv_ranges(img,model_ranges,show_range=True)
-
 
 ### Plot histogram
-
+modelfilter = filter_hsv_ranges(img,model_ranges,show_range=True)
 # model histogram
 x,y,z,s = get_RGB_hist(rm,gm,bm)
 scale = 250./max(s)

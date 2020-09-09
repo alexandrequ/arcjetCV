@@ -116,11 +116,12 @@ if MAKE_MASKS:
     if EDIT_FRAMES:
         flist = edit_frame_list
     else:
-        flist = range(160,len(fpaths))
+        flist = range(60,len(fpaths))
     for i in flist:
         # Load sample frame
         folder, name, ext = splitfn(fpaths[i])
         frame = cv.imread(fpaths[i],1)
+        
         fm = FrameMeta(folder+'/'+name+'.meta')
 
         # Load mask frame
@@ -137,6 +138,7 @@ if MAKE_MASKS:
             uin = input("Redo mask? (y/n): ")
 
             if uin == 'y':
+                frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
                 # Extract model first
                 modelmask =  grab_model(frame)
                 finalmask = grab_shock(frame,modelmask)

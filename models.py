@@ -394,11 +394,11 @@ if __name__ == '__main__':
     vm = VideoMeta(path+fname+".meta")
     video = Video(path+fname+".mp4")
     print(video)
-    frame = video.get_frame(vm.FIRST_GOOD_FRAME+1000)
+    frame = video.get_frame(vm.FIRST_GOOD_FRAME+2000)
 
     # Process frame
     p = ArcjetProcessor(frame,crop_range=vm.crop_range(),flow_direction = vm.FLOW_DIRECTION)
-    contour_dict,argdict = p.process(frame, {'SEGMENT_METHOD':'AutoHSV'})
+    contour_dict,argdict = p.process(frame, {'SEGMENT_METHOD':'GRAY'})
     print(argdict,contour_dict)
 
     # Plot edges
