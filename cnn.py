@@ -9,10 +9,6 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras_segmentation.train import find_latest_checkpoint
 from keras_segmentation.models.model_utils import get_segmentation_model
 
-# import local models
-from models import FrameMeta
-from utils.Functions import convert_mask_gray_to_BGR, cropBGR, cropGRAY
-
 def get_unet_model(img, nclasses=3, ckpath = "ML/checkpoints_mosaic/mynet_arcjetCV"):
 
     cv.imwrite("frame.png", img)
@@ -73,11 +69,12 @@ def cnn_apply(img, model):
 
 
 def get_mosaic_set(inpath, outpath, regex = "*.png"):
+    from glob import glob
     idx = 0
     paths = glob(inpath+regex)
     for element in paths:
         #os.mkdir("dataset/train_masks_mosaic/" + str(element))
-        img = cv.imread(path + element)
+        img = cv.imread(inpath + element)
         width, height = img.size
         w = 128
         while (w < width):
@@ -92,6 +89,8 @@ def get_mosaic_set(inpath, outpath, regex = "*.png"):
 ############################################################################
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    from models import FrameMeta
+    from utils.Functions import convert_mask_gray_to_BGR, cropBGR, cropGRAY
 
     orig_folder = "/home/magnus/Desktop/NASA/arcjetCV/data/sample_frames/"
     mask_folder = "/home/magnus/Desktop/NASA/arcjetCV/data/sample_masks/"

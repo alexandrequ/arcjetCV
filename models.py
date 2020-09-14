@@ -4,6 +4,7 @@ import cv2 as cv
 import numpy as np
 from utils.Functions import splitfn,contoursHSV,contoursGRAY
 from utils.Functions import getEdgeFromContour,contoursAutoHSV
+from cnn import get_unet_model, cnn_apply
 
 class ImageProcessor(object):
     ''' Abstract base class for image processing
@@ -94,6 +95,23 @@ class ArcjetProcessor(ImageProcessor):
         else:
             self.FLOW_DIRECTION = flow_direction
 
+        self.cnn = get_unet_model(self.FRAME_CROP)
+
+    def set_crop(self,crop_range):
+        ''' sets crop window range [[ymin,ymax], [xmin,xmax]] '''
+        self.CROP = crop_range
+        try:
+            if self.CHANNELS == 1:
+                self.FRAME_CROP = frame[self.CROP[0][0]:self.CROP[0][1], self.CROP[1][0]:self.CROP[1][1]]
+            else:
+                self.FRAME_CROP = frame[self.CROP[0][0]:self.CROP[0][1], self.CROP[1][0]:self.CROP[1][1], :]
+        except IndexError:
+            self.FRAME_CROP = None
+            raise IndexError("ERROR: processor crop window %s incompatible with given frame shape %s"%(str(self.CROP),str(frame.shape)))
+
+        # Reinitialize CNN
+        self.cnn = get_unet_model(self.FRAME_CROP)
+        
     def get_flow_direction(self, frame):
         '''infer flow direction
         
@@ -141,6 +159,8 @@ class ArcjetProcessor(ImageProcessor):
         ### HSV brightness value histogram
         gray_ = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         gray  = cv.GaussianBlur(gray_, (5, 5), 0)
+        argdict['PIXEL_MIN'] = gray.min()
+        argdict['PIXEL_MAX'] = gray.max()
 
         ### grayscale histogram
         histr = cv.calcHist( [gray], None, None, [256], (0, 256))
@@ -150,14 +170,15 @@ class ArcjetProcessor(ImageProcessor):
         modelvis = (histr[12:250]/imgsize > 0.00).sum() != 1
         modelvis *= histr[50:250].sum()/imgsize > modelpercent
         argdict['MODEL_VISIBLE'] = modelvis
+        
         argdict['OVEREXPOSED'] =  histr[243:].sum()/imgsize > modelpercent
         argdict['UNDEREXPOSED'] =  histr[150:].sum()/imgsize < modelpercent
 
         return argdict
 
     def preprocess(self, frame, argdict):
-        '''acquire flags, apply crop, get flow direction'''
-        # Crop frame to ROI
+        '''acquire flags, get flow direction'''
+        # Crop image
         try:
             if self.CHANNELS == 1:
                 self.FRAME_CROP = frame[self.CROP[0][0]:self.CROP[0][1], self.CROP[1][0]:self.CROP[1][1]]
@@ -165,13 +186,15 @@ class ArcjetProcessor(ImageProcessor):
                 self.FRAME_CROP = frame[self.CROP[0][0]:self.CROP[0][1], self.CROP[1][0]:self.CROP[1][1], :]
         except IndexError:
             self.FRAME_CROP = None
-            raise IndexError("ERROR: processor crop window %s incompatible with given frame shape %s"%(str(self.CROP),str(frame.shape)))
+            raise IndexError("ERROR: processor crop window %s incompatible with given frame shape %s"%(str(self.CROP),str(frame.shape)))        
 
         # Get flow direction
         if self.FLOW_DIRECTION is None:
             self.FLOW_DIRECTION = self.get_flow_direction(frame)
         
+        # Get exposure classification
         argdict = self.get_image_flags(self.FRAME_CROP, argdict)
+
         return self.FRAME_CROP, argdict
 
     def segment(self, img_crop, argdict):
@@ -183,15 +206,15 @@ class ArcjetProcessor(ImageProcessor):
         elif argdict["SEGMENT_METHOD"] == 'HSV':
             #use contoursHSV
             contour_dict, flags = contoursHSV(img_crop,log=None,
-                                        minHSVModel=(95,0,150),maxHSVModel=(121,125,255),
-                                        minHSVShock=(125,78,115),maxHSVShock=(145,190,230))
+                                        minHSVModel=(0,0,150),maxHSVModel=(121,125,255),
+                                        minHSVShock=(125,40,85),maxHSVShock=(170,80,230))
 
         elif argdict["SEGMENT_METHOD"] == 'GRAY':
             #use contoursGRAY
             try:
                 thresh = argdict["THRESHOLD"]
             except:
-                thresh = 140
+                thresh = 240
             contour_dict, flags = contoursGRAY(img_crop,thresh=thresh,log=None)
 
         elif argdict["SEGMENT_METHOD"] == 'CNN':
@@ -207,7 +230,7 @@ class ArcjetProcessor(ImageProcessor):
         for key in contour_dict.keys():
             c = contour_dict[key]
             if c is not None:
-                edges[key] = getEdgeFromContour(c,self.FLOW_DIRECTION)
+                edges[key] = getEdgeFromContour(c,self.FLOW_DIRECTION, offset =(self.CROP[0][0],self.CROP[1][0]) )
             else:
                 edges[key] = None
         return edges, argdict
@@ -243,6 +266,7 @@ class Video(object):
         self.fps = self.cap.get(cv.CAP_PROP_FPS)
         ret, frame = self.cap.read()
         self.shape = np.shape(frame)
+        self.h,self.w,self.chan = self.shape
         self.last_frame = frame
 
         ### video output
@@ -386,19 +410,19 @@ class Logger(object):
 
 if __name__ == '__main__':
     path = "/home/magnus/Desktop/NASA/arcjetCV/data/video/"
-    fname = "AHF335Run001_EastView_5"
+    fname = "AHF335Run001_EastView_1"
     #fname = "IHF360-003_EastView_3_HighSpeed"
-    fname = "IHF338Run006_EastView_1"
-    fname = "HyMETS-PS03_90"
+    #fname = "IHF338Run006_EastView_1"
+    #fname = "HyMETS-PS03_90"
 
     vm = VideoMeta(path+fname+".meta")
     video = Video(path+fname+".mp4")
     print(video)
-    frame = video.get_frame(vm.FIRST_GOOD_FRAME+2000)
+    frame = video.get_frame(vm.FIRST_GOOD_FRAME)
 
     # Process frame
     p = ArcjetProcessor(frame,crop_range=vm.crop_range(),flow_direction = vm.FLOW_DIRECTION)
-    contour_dict,argdict = p.process(frame, {'SEGMENT_METHOD':'GRAY'})
+    contour_dict,argdict = p.process(frame, {'SEGMENT_METHOD':'HSV'})
     print(argdict,contour_dict)
 
     # Plot edges

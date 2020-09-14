@@ -188,7 +188,7 @@ def mask3(img,c):
     mask[:,:,1],mask[:,:,2] = mask[:,:,0],mask[:,:,0]
     return mask
 
-def contoursGRAY(orig,thresh=None,log=None):
+def contoursGRAY(orig,thresh=150,log=None):
     """
     Find contours for overexposed images
 
@@ -287,7 +287,7 @@ def contoursAutoHSV(orig,log=None,flags={'UNDEREXPOSED':False}):
     return contour_dict,flags
 
 def contoursHSV(orig,log=None,
-                minHSVModel=(95,0,150),maxHSVModel=(121,125,255),
+                minHSVModel=(0,0,150),maxHSVModel=(181,125,256),
                 minHSVShock=(125,78,115),maxHSVShock=(145,190,230) ):
     """
     Find contours using HSV ranges image.
@@ -323,6 +323,11 @@ def contoursHSV(orig,log=None,
     shockmask = cv.inRange(hsv, minHSVShock, maxHSVShock)
     shockcontours,hierarchy = cv.findContours(shockmask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 
+    # plt.imshow(hsv)
+    # plt.show()
+    # plt.imshow(shockmask)
+    # plt.show()
+
     # find the biggest shock contour (shockC) by area
     if len(shockcontours) == 0:
         shockC = None
@@ -355,7 +360,7 @@ def getROI(c1,c2):
     
     return ROI
 
-def getEdgeFromContour(c,flow_direction):
+def getEdgeFromContour(c,flow_direction, offset = None):
     """
     Find front edge of contour given flow direction
 
@@ -370,6 +375,8 @@ def getEdgeFromContour(c,flow_direction):
         frontedge = c[ymin_ind:ymax_ind,:,:]
     else:
         frontedge = c[ymax_ind:,:,:]
+    frontedge[:,0,1] += offset[0]
+    frontedge[:,0,0] += offset[1]
     return frontedge
 
 def smooth(x,window_len=11,window='hanning'):

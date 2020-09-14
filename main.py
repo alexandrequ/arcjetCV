@@ -1,17 +1,12 @@
 """
-In this example, we demonstrate how to create simple camera viewer using OpenCV4 and PyQt5
-Author: Magnuis Haw, Alexandre Quintart
-Last edited: 24 Aug 2020
+Primary GUI for arcjetCV project
+Author: Magnus Haw, Alexandre Quintart
+Last edited: 11 Sept 2020
 """
-# import system module
-import sys
-import os
-from glob import glob
-import PyQt5
+# import base libraries
 import numpy as np
 import cv2 as cv
-import matplotlib.pyplot as plt
-sys.path.append('../')
+
 # import some PyQt5 modules
 from gui.arcjetCV_gui import Ui_MainWindow
 from PyQt5 import QtWidgets, QtGui
@@ -20,7 +15,8 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtGui import QImage, QPixmap
 # import analysis functions
 from utils.Calibrate import splitfn
-
+from models import ArcjetProcessor, Video, VideoMeta
+from cnn import get_unet_model, cnn_apply
 
 class MainWindow(QtWidgets.QMainWindow):
     # class constructor
@@ -30,24 +26,73 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.stop = False
+        
+        # logo
         logo = QPixmap("gui/logo/arcjetCV_logo.png")
         logo = logo.scaledToHeight(451)
+        self.frame = logo
         self.ui.label_img.setPixmap(logo)
         self.show()
 
-        self.folder = "data/video/"
-        self.mask = self.folder+ "AHF335Run001_EastView_?.mp4"
-        self.paths = glob(self.mask)
+        # folder/file properties
+        self.folder = None
+        self.path = None
+        self.filename = None
+        self.ext = None
+        self.video = None
+        self.videometa = None
 
+        # Processor objects
+        self.processor = None
+        self.cnn = None
+
+        # Connect interface
         self.ui.pushButton_runEdgesFullVideo.clicked.connect(self.run)
-        self.ui.pushButton_stop.clicked.connect(self.stopRun)
-        self.ui.actionLoad_video.triggered.connect(self.loadVideo)
+        self.ui.pushButton_stop.clicked.connect(self.stop_run)
+        self.ui.actionLoad_video.triggered.connect(self.load_video)
+
+    def show_img(self):
+        ''' Shows img residing in self.frame '''
+        # create QImage from image
+        image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
+        qimg = QImage(image.data, self.video.w, self.video.h, self.video.w * self.video.chan, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qimg)
+        pixmap_resize = pixmap.scaled(731, 451, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        # show image in img_label
+        self.ui.label_img.setPixmap(pixmap_resize)
+        # update display
+        QApplication.processEvents()
+
+    def load_video(self):
+        ''' Loads a single video file using dialog '''
+
+        # create fileDialog to select file
+        dialog = QtWidgets.QFileDialog()
+        pathmask = dialog.getOpenFileName(None, "Select Video")
+        self.path = pathmask[0]
+        self.folder, self.filename, self.ext = splitfn(self.path)
+
+        # Create video object
+        self.video = Video(self.path)
+        self.videometa = VideoMeta(self.folder+'/'+self.filename+'.meta')
+        self.videometa.write()
+        
+        # Setup first frame on display
+        if self.videometa.FIRST_GOOD_FRAME is None:
+            self.frame = self.video.last_frame.copy()
+            c_range = None
+        else:
+            self.frame = self.video.get_frame(self.videometa.FIRST_GOOD_FRAME)
+            c_range = self.videometa.crop_range()
+
+        # init processor object
+        self.processor = ArcjetProcessor(self.frame, crop_range=c_range, flow_direction=self.videometa.FLOW_DIRECTION)
+        self.show_img()
 
     def run(self):
         # Error check video filepath
          # one or more paths
          # each path is valid
-        print(self.paths,self.mask)
 
         # Options
         self.WRITE_VIDEO = self.ui.checkBox_writeVideo.isChecked()
@@ -66,123 +111,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.pushButton_runEdgesFullVideo.hide()
         self.ui.pushButton_stop.show()
 
-        LOAD = 0
-        contour = None
+        # Setup output video
 
+        # Process frame
+        frame = self.video.get_next_frame()
+        contour_dict,argdict = self.processor.process(frame, {'SEGMENT_METHOD':'HSV'})
 
-        for idx, path in enumerate(self.paths):
-            pth, name, ext = splitfn(path)
-            fname = name+ext
-            print("### "+ name)
+        # Draw contours 
+        for key in contour_dict.keys():
+            if key is 'MODEL':
+                cv.drawContours(frame, contour_dict[key], -1, (0,255,0), 2)
+            elif key is 'SHOCK':
+                cv.drawContours(frame, contour_dict[key], -1, (0,0,255), 2)
+        self.frame = frame.copy()
+        self.show_img()
+        print(contour_dict)
+        # Display processed frames
+        # Write output data
+        # close output video
 
-            cap = cv.VideoCapture(path)
-            ret, self.frame = cap.read()
-            h,w,chan = np.shape(self.frame)
-            step = chan * w
-            # AI set
-            if (LOAD == 0):
-                self.model = self.cnn_set(self.frame)
-                LOAD = 1
-
-            if self.WRITE_VIDEO:
-                vid_cod = cv.VideoWriter_fourcc('m', 'p', '4')
-                output = cv.VideoWriter(self.folder+"edit_"+fname[0:-4]+'.mp4', vid_cod, 100.0, (w, h))
-
-            nframes = cap.get(cv.CAP_PROP_FRAME_COUNT)
-            fps = cap.get(cv.CAP_PROP_FPS)
-            cap.set(cv.CAP_PROP_POS_FRAMES, self.FIRST_FRAME)
-            counter = self.FIRST_FRAME
-            myc=[]
-            while(True):
-
-                if self.stop == True:
-                    self.stop = False
-                    return
-                # Capture frame-by-frame
-                ret, self.frame = cap.read()
-                if ret==False:
-                    print("No more frames")
-                    break
-
-                # Operations on the frame
-                if self.SHOW_CV:
-                    draw = False
-                    plot=False
-                    verbose=False
-                else:
-                    draw = True
-                    plot = True
-                    verbose = True
-
-                if (idx%600 == 0):
-                    frame_ai = self.cnn_apply(self.frame, self.model)
-                    edges = cv.Canny(frame_ai,200,100)
-                    contours, hierarchy = cv.findContours(edges,  cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-                if contour is not None:
-                    cv.drawContours(self.frame, contours, -1, (0,96,196), 3)
-
-                # to uncomment
-                #self.gradient()
-                #ret = getModelProps(self.frame,counter,draw=draw,plot=plot,verbose=verbose,
-                        #         modelpercent=self.MODELPERCENT,stingpercent=self.STINGPERCENT,
-                        #         contourChoice=self.CC,flowDirection=self.FD,
-                        #         intensityMin=self.iMin,intensityMax=self.iMax,
-                        #         minHue=self.hueMin,maxHue=self.hueMax)
-
-                #cv.drawContours(self.frame, self.contours, -1, (0,96,196), 3)
-
-                #if ret != None:
-                #    (c,stingc), ROI, (th,cx,cy), flowRight,flags = ret
-                #    (xb,yb,wb,hb) = cv.boundingRect(c)
-                #    area = cv.contourArea(c)
-                #    cv.rectangle(self.frame,(xb,yb,wb,hb),(255,255,255),3)
-                #    cv.drawContours(self.frame, c, -1, (0,255,255), 3)
-
-                    ### Save contours and useful parameters
-                    #myc.append([counter,cy,hb,area,c,flags])
-                if self.WRITE_VIDEO:
-                    output.write(self.frame)
-
-                if self.SHOW_CV:
-
-                    # create QImage from image
-                    image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
-                    #image = cv.cvtColor(self.frame, cv.COLOR_BGR2HSV)
-                    #image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
-                    qImg = QImage(image.data, w, h, step, QImage.Format_RGB888)
-                    pixmap = QPixmap.fromImage(qImg)
-                    self.pixmap_resize = pixmap.scaled(731, 451, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                    # show image in img_label
-                    self.ui.label_img.setPixmap(self.pixmap_resize)
-                    QApplication.processEvents() # update display
-
-                    if cv.waitKey(1) & 0xFF == ord('q'):
-                        break
-                counter +=1
-
-            # When everything done, release the capture
-            cap.release()
-            if self.WRITE_VIDEO:
-                output.release()
-            cv.destroyAllWindows()
-
-            if self.WRITE_PICKLE:
-                import pickle
-                fout = open(self.folder+fname[0:-4] +'_edges.pkl','wb')
-                pickle.dump(myc,fout)
-                fout.close()
-
-    def stopRun(self):
+    def stop_run(self):
         self.stop = True
         self.ui.pushButton_stop.hide()
         self.ui.pushButton_runEdgesFullVideo.show()
-
-    def loadVideo(self):
-        #path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-        dialog = QtWidgets.QFileDialog()
-        self.mask = dialog.getOpenFileName(None, "Select Video")
-        self.paths = self.mask
-        #script = "cp -r " + str(self.folder_path) + " " + str(path)
 
     def bright(self):
         gray = cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY)
@@ -223,8 +174,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.frame = cv.cvtColor(lab, cv.COLOR_LAB2BGR)
         cv.imshow("hello", self.frame)
 
-    
+
 if __name__ == '__main__':
+    import sys
     app = QApplication(sys.argv)
 
     # create and show mainWindow
