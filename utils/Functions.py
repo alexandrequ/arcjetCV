@@ -3,6 +3,8 @@ import cv2 as cv
 import os
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
+from cnn import cnn_apply
+
 
 def splitfn(fn):
     path, fn = os.path.split(fn)
@@ -251,7 +253,7 @@ def contoursAutoHSV(orig,log=None,flags={'UNDEREXPOSED':False}):
         flags['DIM_SHOCK'] = True
         shock_ranges = np.hstack((shock_ranges,dim_shocks))
         shockfilter = filter_hsv_ranges(img,shock_ranges)
-    shockcontours,hierarchy = cv.findContours(shockfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    shockcontours,hierarchy = cv.findContours(shockfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     # plt.imshow(shockfilter)
     # plt.show()
 
@@ -269,10 +271,10 @@ def contoursAutoHSV(orig,log=None,flags={'UNDEREXPOSED':False}):
     if flags['UNDEREXPOSED']:
         kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(5,5))
         modelfilter = cv.morphologyEx(modelfilter, cv.MORPH_OPEN, kernel)
-    modelcontours,hierarchy = cv.findContours(modelfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    modelcontours,hierarchy = cv.findContours(modelfilter, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 
-    plt.imshow(modelfilter)
-    plt.show()
+    # plt.imshow(modelfilter)
+    # plt.show()
     # find the biggest model contour (modelC) by area
     if len(modelcontours) == 0:
         modelC = None
@@ -321,6 +323,56 @@ def contoursHSV(orig,log=None,
 
     ### Shock contours
     shockmask = cv.inRange(hsv, minHSVShock, maxHSVShock)
+    shockcontours,hierarchy = cv.findContours(shockmask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+
+    # plt.imshow(hsv)
+    # plt.show()
+    # plt.imshow(shockmask)
+    # plt.show()
+
+    # find the biggest shock contour (shockC) by area
+    if len(shockcontours) == 0:
+        shockC = None
+        flags['SHOCK_CONTOUR_FAILED'] = True
+        if log is not None:
+            log.write('no shock contours found')
+    else:
+        shockC = max(shockcontours, key = cv.contourArea)
+    
+    contour_dict ={'MODEL':modelC,'SHOCK':shockC}
+
+    return contour_dict,flags
+
+def contoursCNN(orig,model, log=None):
+    """
+    Find contours using HSV ranges image.
+    Uses the BGR-HSV transformation to increase contrast.
+
+    :param orig: opencv 8bit BGR image
+    :param model: compiled CNN model
+    :returns: model contour, shock contour
+    """
+
+    flags={'MODEL_CONTOUR_FAILED':False,'SHOCK_CONTOUR_FAILED':False}
+    
+    ### Apply CNN
+    cnnmask = cnn_apply(orig,model)
+
+    ### Model contours
+    modelmask = ((cnnmask==1)*255).astype(np.uint8)
+    modelcontours,hierarchy = cv.findContours(modelmask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    
+    # find the biggest model contour (modelC) by area
+    if len(modelcontours) == 0:
+        modelC = None
+        flags['MODEL_CONTOUR_FAILED'] = True
+        if log is not None:
+            log.write('no shock contours found')
+    else:
+        modelC = max(modelcontours, key = cv.contourArea)
+
+    ### Shock contours
+    shockmask = ((cnnmask==2)*255).astype(np.uint8)
     shockcontours,hierarchy = cv.findContours(shockmask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 
     # plt.imshow(hsv)

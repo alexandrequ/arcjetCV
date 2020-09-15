@@ -127,7 +127,7 @@ if __name__ == "__main__":
         dst = cv.addWeighted(img_crop, alpha, ML_mask, beta, 0.0)
         plt.subplot(121)
         plt.title("ML mask")
-        plt.imshow(dst)
+        plt.imshow(ML_mask)
 
         dst = cv.addWeighted(img_crop, alpha, mask_crop, beta, 0.0)
         plt.subplot(122)

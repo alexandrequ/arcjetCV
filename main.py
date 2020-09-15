@@ -12,7 +12,8 @@ from gui.arcjetCV_gui import Ui_MainWindow
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import Qt, QThread, QTimer,pyqtSignal,pyqtSlot
 from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtGui import QImage, QPixmap, QColor
+
 # import analysis functions
 from utils.Calibrate import splitfn
 from models import ArcjetProcessor, Video, VideoMeta
@@ -28,12 +29,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stop = False
         
         # logo
-        logo = QPixmap("gui/logo/arcjetCV_logo.png")
+        self.frame = cv.imread("gui/logo/arcjetCV_logo.png")
+        image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
+        self.hsv = cv.cvtColor(self.frame, cv.COLOR_BGR2HSV)
+        self.h,self.w,self.chan = np.shape(image)
+        qimg = QImage(image.data, self.w, self.h, self.w*3, QImage.Format_RGB888)
+        logo = QPixmap.fromImage(qimg)
         logo = logo.scaledToHeight(451)
-        self.frame = logo
+        self.SCALE_FACTOR = 1004/452
         self.ui.label_img.setPixmap(logo)
-        self.show()
-
+        
         # folder/file properties
         self.folder = None
         self.path = None
@@ -47,21 +52,55 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cnn = None
 
         # Connect interface
-        self.ui.pushButton_runEdgesFullVideo.clicked.connect(self.run)
-        self.ui.pushButton_stop.clicked.connect(self.stop_run)
+        self.ui.pushButton_process.clicked.connect(self.process_all)
         self.ui.actionLoad_video.triggered.connect(self.load_video)
+        self.ui.label_img.newCursorValue.connect(self.getPixel)
+
+        self.show()
+
+    @pyqtSlot(list)
+    def getPixel(self, inputvals):
+        x,y = inputvals
+        x = min(self.w-1,int(x*self.SCALE_FACTOR))
+        y = min(self.h-1,int(y*self.SCALE_FACTOR))
+        #print(x, y, self.w, self.h)
+
+        h,s,v = self.hsv[y,x,:]
+        b,g,r = self.frame[y,x,:]
+        self.ui.basebar.setText("(%i, %i), HSV (%i, %i, %i), RGB (%i, %i, %i)"%(x,y,h,s,v,r,g,b))
 
     def show_img(self):
         ''' Shows img residing in self.frame '''
         # create QImage from image
         image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
-        qimg = QImage(image.data, self.video.w, self.video.h, self.video.w * self.video.chan, QImage.Format_RGB888)
-        pixmap = QPixmap.fromImage(qimg)
-        pixmap_resize = pixmap.scaled(731, 451, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.hsv = cv.cvtColor(self.frame, cv.COLOR_BGR2HSV)
+        self.qimg = QImage(image.data, self.video.w, self.video.h, self.video.w * self.video.chan, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(self.qimg)
+        pixmap = pixmap.scaled(731, 451, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         # show image in img_label
-        self.ui.label_img.setPixmap(pixmap_resize)
+        self.ui.label_img.setPixmap(pixmap)
         # update display
         QApplication.processEvents()
+
+    def update_frame_index(self):
+        frame = self.video.get_frame(self.ui.spinBox_FrameIndex.value())
+        inputdict = {'SEGMENT_METHOD':str(self.ui.comboBox_filterType.currentText())}
+        inputdict["HSV_MODEL_RANGE"] = [(self.ui.minHue.value(), self.ui.minSaturation.value(), self.ui.minIntensity.value()), 
+                                        (self.ui.maxHue.value(), self.ui.maxSaturation.value(), self.ui.maxIntensity.value())]
+        inputdict["HSV_SHOCK_RANGE"] = [(self.ui.minHue_2.value(), self.ui.minSaturation_2.value(), self.ui.minIntensity_2.value()), 
+                                        (self.ui.maxHue_2.value(), self.ui.maxSaturation_2.value(), self.ui.maxIntensity_2.value())]
+        inputdict["THRESHOLD"] = self.ui.minIntensity.value()
+
+        contour_dict,argdict = self.processor.process(frame, inputdict)
+
+        # Draw contours 
+        for key in contour_dict.keys():
+            if key is 'MODEL':
+                cv.drawContours(frame, contour_dict[key], -1, (0,255,0), 2)
+            elif key is 'SHOCK':
+                cv.drawContours(frame, contour_dict[key], -1, (0,0,255), 2)
+        self.frame = frame.copy()
+        self.show_img()
 
     def load_video(self):
         ''' Loads a single video file using dialog '''
@@ -76,6 +115,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.video = Video(self.path)
         self.videometa = VideoMeta(self.folder+'/'+self.filename+'.meta')
         self.videometa.write()
+
+        if self.video.w / self.video.h > 731/451:
+            self.SCALE_FACTOR = self.video.w / 730
+            self.w = self.video.w
+            self.h = self.video.h
+        else:
+            self.SCALE_FACTOR = self.video.h / 450
+            self.w = self.video.w
+            self.h = self.video.h
         
         # Setup first frame on display
         if self.videometa.FIRST_GOOD_FRAME is None:
@@ -85,31 +133,23 @@ class MainWindow(QtWidgets.QMainWindow):
             self.frame = self.video.get_frame(self.videometa.FIRST_GOOD_FRAME)
             c_range = self.videometa.crop_range()
 
-        # init processor object
+        # Init processor object
         self.processor = ArcjetProcessor(self.frame, crop_range=c_range, flow_direction=self.videometa.FLOW_DIRECTION)
-        self.show_img()
+        
+        # Setup UI
+        self.ui.spinBox_FrameIndex.setRange(0,self.video.nframes-1)
+        self.ui.spinBox_FrameIndex.valueChanged.connect(self.update_frame_index)
+        self.ui.spinBox_FrameIndex.setValue(self.videometa.FIRST_GOOD_FRAME)
 
-    def run(self):
+        self.ui.spinBox_FirstGoodFrame.setValue(self.videometa.FIRST_GOOD_FRAME)
+        self.ui.spinBox_LastGoodFrame.setValue(self.videometa.LAST_GOOD_FRAME)
+        self.ui.doubleSpinBox_modelFraction.setValue(self.videometa.MODELPERCENT*100)
+
+    def process_all(self):
         # Error check video filepath
          # one or more paths
          # each path is valid
 
-        # Options
-        self.WRITE_VIDEO = self.ui.checkBox_writeVideo.isChecked()
-        self.WRITE_PICKLE = self.ui.checkBox_writePickle.isChecked()
-        self.SHOW_CV = True
-        self.FIRST_FRAME = self.ui.spinBox_firstFrame.value() #900#+303
-        self.MODELPERCENT = self.ui.spinBox_minArea.value() #0.012
-        self.STINGPERCENT = self.ui.spinBox_minStingArea.value() #0.5
-        self.CC = str(self.ui.comboBox_filterType.currentText()) #'default'
-        self.FD = str(self.ui.comboBox_flowDirection.currentText())#'right'
-        self.iMin = None #self.ui.minIntensity.value() #None#150
-        self.iMax = None #self.ui.maxIntensity.value() #None#255
-        self.hueMin = None #self.ui.minHue.value() #None#95
-        self.hueMax = None #self.ui.maxHue.value() #None#140
-
-        self.ui.pushButton_runEdgesFullVideo.hide()
-        self.ui.pushButton_stop.show()
 
         # Setup output video
 
@@ -125,55 +165,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 cv.drawContours(frame, contour_dict[key], -1, (0,0,255), 2)
         self.frame = frame.copy()
         self.show_img()
-        print(contour_dict)
         # Display processed frames
         # Write output data
         # close output video
-
-    def stop_run(self):
-        self.stop = True
-        self.ui.pushButton_stop.hide()
-        self.ui.pushButton_runEdgesFullVideo.show()
-
-    def bright(self):
-        gray = cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY)
-        blurred = cv.GaussianBlur(gray, (11, 11), 0)
-        # threshold the image to reveal light regions in the
-        # blurred image
-        self.thresh = cv.threshold(blurred, 250, 255, cv.THRESH_BINARY)[1]
-        # perform a series of erosions and dilations to remove
-        # any small blobs of noise from the thresholded image
-        self.thresh = cv.erode(self.thresh, None, iterations=2)
-        self.thresh = cv.dilate(self.thresh, None, iterations=4)
-        return self.thresh
-
-    def gradient(self):
-
-        gray = cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY)  # convert the image in gray
-        # create a CLAHE object (Arguments are optional).
-        #clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        #frame = clahe.apply(gray)
-        blurred = cv.GaussianBlur(gray, (11, 11), 0) # smoothing (blurring) it to reduce high frequency noise
-        self.thresh = cv.threshold(blurred, 250, 255, cv.THRESH_BINARY)[1] # threshold the image to reveal light regions in the
-        # perform a series of erosions and dilations to remove
-        # any small blobs of noise from the thresholded image
-        self.thresh = cv.erode(self.thresh, None, iterations=2)
-        self.thresh = cv.dilate(self.thresh, None, iterations=4)
-        edges = cv.Canny(self.thresh,200,100)
-        self.contours, hierarchy = cv.findContours(edges,  cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-        #cv.drawContours(self.frame, self.contours, -1, (0,96,196), 3)
-        #cv.imshow("hello", frame)
-
-    def clahe(self):
-
-        lab = cv.cvtColor(self.frame, cv.COLOR_BGR2LAB)
-        lab_planes = cv.split(lab)
-        clahe = cv.createCLAHE(clipLimit=2.0,tileGridSize=(8,8))
-        lab_planes[0] = clahe.apply(lab_planes[0])
-        lab = cv.merge(lab_planes)
-        self.frame = cv.cvtColor(lab, cv.COLOR_LAB2BGR)
-        cv.imshow("hello", self.frame)
-
 
 if __name__ == '__main__':
     import sys

@@ -2,7 +2,7 @@ import os
 import abc
 import cv2 as cv
 import numpy as np
-from utils.Functions import splitfn,contoursHSV,contoursGRAY
+from utils.Functions import splitfn,contoursHSV,contoursGRAY,contoursCNN
 from utils.Functions import getEdgeFromContour,contoursAutoHSV
 from cnn import get_unet_model, cnn_apply
 
@@ -199,15 +199,25 @@ class ArcjetProcessor(ImageProcessor):
 
     def segment(self, img_crop, argdict):
         ''' segment image using one of several methods'''
+
         if argdict["SEGMENT_METHOD"] == 'AutoHSV':
             #use contoursAutoHSV
             contour_dict, flags = contoursAutoHSV(img_crop, flags=argdict)
+            argdict.update(flags)
 
         elif argdict["SEGMENT_METHOD"] == 'HSV':
             #use contoursHSV
+            try:
+                HSVModelRange = argdict["HSV_MODEL_RANGE"]
+                HSVShockRange = argdict["HSV_SHOCK_RANGE"]
+            except KeyError:
+                HSVModelRange = [(0,0,150), (121,125,255)]
+                HSVShockRange = [(125,40,85), (170,80,230)]
+                
             contour_dict, flags = contoursHSV(img_crop,log=None,
-                                        minHSVModel=(0,0,150),maxHSVModel=(121,125,255),
-                                        minHSVShock=(125,40,85),maxHSVShock=(170,80,230))
+                                        minHSVModel=HSVModelRange[0],maxHSVModel=HSVModelRange[1],
+                                        minHSVShock=HSVShockRange[0],maxHSVShock=HSVShockRange[1])
+            argdict.update(flags)
 
         elif argdict["SEGMENT_METHOD"] == 'GRAY':
             #use contoursGRAY
@@ -216,12 +226,13 @@ class ArcjetProcessor(ImageProcessor):
             except:
                 thresh = 240
             contour_dict, flags = contoursGRAY(img_crop,thresh=thresh,log=None)
+            argdict.update(flags)
 
         elif argdict["SEGMENT_METHOD"] == 'CNN':
             #use machine learning CNN
-            pass
+            contour_dict, flags = contoursCNN(img_crop, self.cnn)
+            argdict.update(flags)
         
-        argdict.update(flags)
         return contour_dict, argdict
 
     def reduce(self, contour_dict, argdict):
@@ -422,7 +433,7 @@ if __name__ == '__main__':
 
     # Process frame
     p = ArcjetProcessor(frame,crop_range=vm.crop_range(),flow_direction = vm.FLOW_DIRECTION)
-    contour_dict,argdict = p.process(frame, {'SEGMENT_METHOD':'HSV'})
+    contour_dict,argdict = p.process(frame, {'SEGMENT_METHOD':'CNN'})
     print(argdict,contour_dict)
 
     # Plot edges
