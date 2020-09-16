@@ -65,17 +65,21 @@ class MainWindow(QtWidgets.QMainWindow):
         y = min(self.h-1,int(y*self.SCALE_FACTOR))
         #print(x, y, self.w, self.h)
 
-        h,s,v = self.hsv[y,x,:]
-        b,g,r = self.frame[y,x,:]
-        self.ui.basebar.setText("(%i, %i), HSV (%i, %i, %i), RGB (%i, %i, %i)"%(x,y,h,s,v,r,g,b))
+        try:
+            h,s,v = self.hsv[y,x,:]
+            b,g,r = self.frame[y,x,:]
+            self.ui.basebar.setText("XY (%i, %i), HSV (%i, %i, %i), RGB (%i, %i, %i)"%(x,y,h,s,v,r,g,b))
+        except:
+            self.ui.basebar.setText("XY (%i, %i)"%(x,y))
 
     def show_img(self):
         ''' Shows img residing in self.frame '''
         # create QImage from image
+        #cv.rectangle(self.frame,(xb,yb,wb,hb),(255, 255, 255),3)
         image = cv.cvtColor(self.frame, cv.COLOR_BGR2RGB)
         self.hsv = cv.cvtColor(self.frame, cv.COLOR_BGR2HSV)
-        self.qimg = QImage(image.data, self.video.w, self.video.h, self.video.w * self.video.chan, QImage.Format_RGB888)
-        pixmap = QPixmap.fromImage(self.qimg)
+        qimg = QImage(image.data, self.video.w, self.video.h, self.video.w * self.video.chan, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qimg)
         pixmap = pixmap.scaled(731, 451, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         # show image in img_label
         self.ui.label_img.setPixmap(pixmap)
@@ -108,42 +112,60 @@ class MainWindow(QtWidgets.QMainWindow):
         # create fileDialog to select file
         dialog = QtWidgets.QFileDialog()
         pathmask = dialog.getOpenFileName(None, "Select Video")
+
         self.path = pathmask[0]
-        self.folder, self.filename, self.ext = splitfn(self.path)
+        if self.path != '':
+            self.folder, self.filename, self.ext = splitfn(self.path)
 
-        # Create video object
-        self.video = Video(self.path)
-        self.videometa = VideoMeta(self.folder+'/'+self.filename+'.meta')
-        self.videometa.write()
+            # Create video object
+            self.video = Video(self.path)
+            self.videometa = VideoMeta(self.folder+'/'+self.filename+'.meta')
+            self.videometa.write()
 
-        if self.video.w / self.video.h > 731/451:
-            self.SCALE_FACTOR = self.video.w / 730
-            self.w = self.video.w
-            self.h = self.video.h
-        else:
-            self.SCALE_FACTOR = self.video.h / 450
-            self.w = self.video.w
-            self.h = self.video.h
-        
-        # Setup first frame on display
-        if self.videometa.FIRST_GOOD_FRAME is None:
-            self.frame = self.video.last_frame.copy()
-            c_range = None
-        else:
-            self.frame = self.video.get_frame(self.videometa.FIRST_GOOD_FRAME)
-            c_range = self.videometa.crop_range()
+            if self.video.w / self.video.h > 731/451:
+                self.SCALE_FACTOR = self.video.w / 730
+                self.w = self.video.w
+                self.h = self.video.h
+            else:
+                self.SCALE_FACTOR = self.video.h / 450
+                self.w = self.video.w
+                self.h = self.video.h
+            
+            # Setup first frame on display
+            if self.videometa.FIRST_GOOD_FRAME is None:
+                self.frame = self.video.last_frame.copy()
+                c_range = None
+            else:
+                self.frame = self.video.get_frame(self.videometa.FIRST_GOOD_FRAME)
+                c_range = self.videometa.crop_range()
 
-        # Init processor object
-        self.processor = ArcjetProcessor(self.frame, crop_range=c_range, flow_direction=self.videometa.FLOW_DIRECTION)
-        
-        # Setup UI
-        self.ui.spinBox_FrameIndex.setRange(0,self.video.nframes-1)
-        self.ui.spinBox_FrameIndex.valueChanged.connect(self.update_frame_index)
-        self.ui.spinBox_FrameIndex.setValue(self.videometa.FIRST_GOOD_FRAME)
+            # Init processor object
+            self.processor = ArcjetProcessor(self.frame, crop_range=c_range, flow_direction=self.videometa.FLOW_DIRECTION)
+            
+            # Initialize UI
+            self.ui.spinBox_FrameIndex.setRange(0,self.video.nframes-1)
+            self.ui.spinBox_FrameIndex.setValue(self.videometa.FIRST_GOOD_FRAME)
+            self.ui.spinBox_FirstGoodFrame.setValue(self.videometa.FIRST_GOOD_FRAME)
+            self.ui.spinBox_LastGoodFrame.setValue(self.videometa.LAST_GOOD_FRAME)
 
-        self.ui.spinBox_FirstGoodFrame.setValue(self.videometa.FIRST_GOOD_FRAME)
-        self.ui.spinBox_LastGoodFrame.setValue(self.videometa.LAST_GOOD_FRAME)
-        self.ui.doubleSpinBox_modelFraction.setValue(self.videometa.MODELPERCENT*100)
+            # Connect UI
+            self.ui.spinBox_FrameIndex.valueChanged.connect(self.update_frame_index)
+            self.ui.maxHue.valueChanged.connect(self.update_frame_index)
+            self.ui.minHue.valueChanged.connect(self.update_frame_index)
+            self.ui.minIntensity.valueChanged.connect(self.update_frame_index)
+            self.ui.maxIntensity.valueChanged.connect(self.update_frame_index)
+            self.ui.minSaturation.valueChanged.connect(self.update_frame_index)
+            self.ui.maxSaturation.valueChanged.connect(self.update_frame_index)
+
+            self.ui.maxHue_2.valueChanged.connect(self.update_frame_index)
+            self.ui.minHue_2.valueChanged.connect(self.update_frame_index)
+            self.ui.minIntensity_2.valueChanged.connect(self.update_frame_index)
+            self.ui.maxIntensity_2.valueChanged.connect(self.update_frame_index)
+            self.ui.minSaturation_2.valueChanged.connect(self.update_frame_index)
+            self.ui.maxSaturation_2.valueChanged.connect(self.update_frame_index)
+
+            self.ui.comboBox_filterType.currentTextChanged.connect(self.update_frame_index)
+            self.update_frame_index()
 
     def process_all(self):
         # Error check video filepath
