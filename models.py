@@ -2,6 +2,7 @@ import os
 import abc
 import cv2 as cv
 import numpy as np
+import pickle
 from utils.Functions import splitfn,contoursHSV,contoursGRAY,contoursCNN
 from utils.Functions import getEdgeFromContour,contoursAutoHSV
 from cnn import get_unet_model, cnn_apply
@@ -419,6 +420,39 @@ class Logger(object):
             fh.write(self.prefix+line.__str__()+'\n')
             fh.close()
 
+class OutputList(list):
+    """Extension of list with write to file function
+        expected to hold dictionary objects corresponding to 
+        analysis of individual video frames
+
+        filepath argument must contain low and high index constraints
+        which are delimited by underscores:
+        e.g. myoutput_0_10.opl
+
+    Args:
+        list (list): base list class
+        filepath (string): path for saving file
+    """
+    def __init__(self,filepath):
+        super(OutputList,self).__init__()
+        self.filepath=filepath
+        folder, name, ext = splitfn(filepath)
+        self.folder = folder
+
+        namesplit = name.split('_')
+        self.prefix = namesplit[0]
+        self.low_index = int(namesplit[1])
+        self.high_index = int(namesplit[2])
+    
+    def write(self):
+        fout = open(self.filepath,'wb')
+        pickle.dump(self, fout)
+        fout.close()
+
+    def append(self,obj):
+        if obj["INDEX"] <= self.high_index and obj["INDEX"] >= self.low_index:
+            super(OutputList,self).append(obj)
+
 if __name__ == '__main__':
     path = "/home/magnus/Desktop/NASA/arcjetCV/data/video/"
     fname = "AHF335Run001_EastView_1"
@@ -431,10 +465,17 @@ if __name__ == '__main__':
     print(video)
     frame = video.get_frame(vm.FIRST_GOOD_FRAME)
 
+    # Create OutputList object to store results
+    opl = OutputList("/home/magnus/Desktop/NASA/arcjetCV/test_3070_4070.out")
+
     # Process frame
     p = ArcjetProcessor(frame,crop_range=vm.crop_range(),flow_direction = vm.FLOW_DIRECTION)
-    contour_dict,argdict = p.process(frame, {'SEGMENT_METHOD':'CNN'})
-    print(argdict,contour_dict)
+    contour_dict,argdict = p.process(frame, {'SEGMENT_METHOD':'CNN',"INDEX":vm.FIRST_GOOD_FRAME})
+
+    argdict.update(contour_dict)
+    opl.append(argdict)
+    opl.write()
+    print(argdict.keys(),contour_dict.keys())
 
     # Plot edges
     c = contour_dict['MODEL']

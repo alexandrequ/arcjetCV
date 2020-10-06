@@ -168,27 +168,39 @@ class MainWindow(QtWidgets.QMainWindow):
             self.update_frame_index()
 
     def process_all(self):
-        # Error check video filepath
-         # one or more paths
-         # each path is valid
-
-
+        # Create OutputList object to store results
+        opl = OutputList("test_3070_4070.out")
+        
+        inputdict = {'SEGMENT_METHOD':str(self.ui.comboBox_filterType.currentText())}
+        inputdict["HSV_MODEL_RANGE"] = [(self.ui.minHue.value(), self.ui.minSaturation.value(), self.ui.minIntensity.value()), 
+                                        (self.ui.maxHue.value(), self.ui.maxSaturation.value(), self.ui.maxIntensity.value())]
+        inputdict["HSV_SHOCK_RANGE"] = [(self.ui.minHue_2.value(), self.ui.minSaturation_2.value(), self.ui.minIntensity_2.value()), 
+                                        (self.ui.maxHue_2.value(), self.ui.maxSaturation_2.value(), self.ui.maxIntensity_2.value())]
+        inputdict["THRESHOLD"] = self.ui.minIntensity.value()
+        
         # Setup output video
 
         # Process frame
-        frame = self.video.get_next_frame()
-        contour_dict,argdict = self.processor.process(frame, {'SEGMENT_METHOD':'HSV'})
+        for frame_index in range(0,1):
+            frame = self.video.get_frame(frame_index)
+            inputdict["INDEX"] = frame_index
+            contour_dict,argdict = self.processor.process(frame, inputdict)
 
-        # Draw contours 
-        for key in contour_dict.keys():
-            if key is 'MODEL':
-                cv.drawContours(frame, contour_dict[key], -1, (0,255,0), 2)
-            elif key is 'SHOCK':
-                cv.drawContours(frame, contour_dict[key], -1, (0,0,255), 2)
-        self.frame = frame.copy()
-        self.show_img()
-        # Display processed frames
+            # Draw contours 
+            for key in contour_dict.keys():
+                if key is 'MODEL':
+                    cv.drawContours(frame, contour_dict[key], -1, (0,255,0), 2)
+                elif key is 'SHOCK':
+                    cv.drawContours(frame, contour_dict[key], -1, (0,0,255), 2)
+            self.frame = frame.copy()
+            self.show_img()
+
+            argdict.update(contour_dict)
+            opl.append(argdict)
+
         # Write output data
+        opl.write()
+
         # close output video
 
 if __name__ == '__main__':
