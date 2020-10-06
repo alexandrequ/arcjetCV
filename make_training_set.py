@@ -36,7 +36,7 @@ def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[],
         folder, name, ext = splitfn(path)
         fname = name+ext;print("### "+ name)
         
-        vmeta = VideoMeta(folder+'/'+name+'.meta')
+        vmeta = VideoMeta(os.path.join(folder,name+'.meta'))
         vid = Video(path)
         
         for fnumber in np.linspace(vmeta.FIRST_GOOD_FRAME, vmeta.LAST_GOOD_FRAME, nframes):
@@ -122,7 +122,7 @@ if MAKE_MASKS:
         folder, name, ext = splitfn(fpaths[i])
         frame = cv.imread(fpaths[i],1)
         
-        fm = FrameMeta(folder+'/'+name+'.meta')
+        fm = FrameMeta(os.path.join(folder,name+'.meta'))
 
         # Load mask frame
         mpath = MASK_FOLDER + name + ext

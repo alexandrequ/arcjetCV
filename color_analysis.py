@@ -78,7 +78,7 @@ for path in framepaths[0:]:
     # hsvsq[:,:,2] = hsv[:,:,2]
     frame = hsv
     mask = cv.imread(MASK_FOLDER+ name+ext,0)
-    framemeta = FrameMeta(folder+'/'+name+".meta")
+    framemeta = FrameMeta(os.path.join(folder,name+".meta"))
 
     img = frame[framemeta.YMIN:framemeta.YMAX,framemeta.XMIN:framemeta.XMAX,:]
     cropshapes_y.append(framemeta.YMAX-framemeta.YMIN)

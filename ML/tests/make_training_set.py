@@ -29,7 +29,7 @@ if SELECT_FRAMES:
         folder, name, ext = splitfn(path)
         fname = name+ext;print("### "+ name)
         
-        meta = FrameMeta(folder+'/'+name+'.meta')
+        meta = FrameMeta(os.path.join(folder,name+'.meta'))
         #print(meta.WIDTH,meta.HEIGHT)
 
         cap = cv.VideoCapture(path)
@@ -77,9 +77,9 @@ if MAKE_MASKS:
         path = framefolder + 'frame_%04d.png'%p
         folder, name, ext = splitfn(path)
         fname = name+ext;print("### "+ name)
-        frame = cv.imread(folder+'/'+fname, flags=cv.IMREAD_COLOR)
+        frame = cv.imread(os.path.join(folder,fname), flags=cv.IMREAD_COLOR)
         
-        meta = FrameMeta(folder+'/'+name+'.meta')
+        meta = FrameMeta(os.path.join(folder,name+'.meta'))
         # Operations on the frame
         draw = True
         plot=True

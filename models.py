@@ -303,7 +303,8 @@ class Video(object):
 
     def get_writer(self):
         vid_cod = cv.VideoWriter_fourcc('m','p','4','v')
-        self.writer = cv.VideoWriter(self.folder+"edit_"+self.name+'.m4v',
+        print(self.folder+"edit_"+self.name+'.m4v')
+        self.writer = cv.VideoWriter(os.path.join(self.folder,"edit_"+self.name+'.m4v'),
                                          vid_cod, self.fps,(self.shape[1],self.shape[0]))
         
     def close_writer(self):
@@ -440,9 +441,9 @@ class OutputList(list):
         self.folder = folder
 
         namesplit = name.split('_')
-        self.prefix = namesplit[0]
-        self.low_index = int(namesplit[1])
-        self.high_index = int(namesplit[2])
+        self.prefix = namesplit[0:-2]
+        self.low_index = int(namesplit[-2])
+        self.high_index = int(namesplit[-1])
     
     def write(self):
         fout = open(self.filepath,'wb')

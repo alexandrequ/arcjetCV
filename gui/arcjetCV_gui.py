@@ -380,7 +380,7 @@ class Ui_MainWindow(object):
         self.FilterTabs.setTabText(self.FilterTabs.indexOf(self.tab_4), _translate("MainWindow", "Shock Filter"))
         self.groupBox.setTitle(_translate("MainWindow", "Output parameters"))
         self.label_17.setText(_translate("MainWindow", "Frame range:"))
-        self.label_20.setText(_translate("MainWindow", "Output filename:"))
+        self.label_20.setText(_translate("MainWindow", "Output prefix:"))
         self.checkBox_writeVideo.setText(_translate("MainWindow", "Write video?"))
         self.checkBox_writeCSV.setText(_translate("MainWindow", "Write csv?"))
         self.pushButton_process.setText(_translate("MainWindow", "Process All"))

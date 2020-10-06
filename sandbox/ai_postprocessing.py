@@ -205,8 +205,8 @@ if __name__ == "__main__":
     if LOAD ==0:
         paths = glob(mask)
         vfolder, name, ext = splitfn(paths[0])
-    foutname = folder+'/'+name+'.pickle'
-    meta = FrameMeta(folder+'/'+name+'.meta')
+    foutname = os.path.join(folder,name+'.pickle')
+    meta = FrameMeta(os.path.join(folder,name+'.meta'))
 
     if LOAD:
         fin = open(foutname, 'rb')

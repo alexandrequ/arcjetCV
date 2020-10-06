@@ -7,6 +7,7 @@ from cnn import cnn_apply
 
 
 def splitfn(fn):
+    fn = os.path.abspath(fn)
     path, fn = os.path.split(fn)
     name, ext = os.path.splitext(fn)
     return path, name, ext

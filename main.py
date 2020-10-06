@@ -16,7 +16,7 @@ from PyQt5.QtGui import QImage, QPixmap, QColor
 
 # import analysis functions
 from utils.Calibrate import splitfn
-from models import ArcjetProcessor, Video, VideoMeta
+from models import ArcjetProcessor, Video, VideoMeta, OutputList
 from cnn import get_unet_model, cnn_apply
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -119,7 +119,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # Create video object
             self.video = Video(self.path)
-            self.videometa = VideoMeta(self.folder+'/'+self.filename+'.meta')
+            self.videometa = VideoMeta(os.path.join(self.folder,self.filename+'.meta'))
             self.videometa.write()
 
             if self.video.w / self.video.h > 731/451:
@@ -147,6 +147,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.spinBox_FrameIndex.setValue(self.videometa.FIRST_GOOD_FRAME)
             self.ui.spinBox_FirstGoodFrame.setValue(self.videometa.FIRST_GOOD_FRAME)
             self.ui.spinBox_LastGoodFrame.setValue(self.videometa.LAST_GOOD_FRAME)
+            self.ui.lineEdit_filename.setText(self.video.name)
 
             # Connect UI
             self.ui.spinBox_FrameIndex.valueChanged.connect(self.update_frame_index)
@@ -169,7 +170,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def process_all(self):
         # Create OutputList object to store results
-        opl = OutputList("test_3070_4070.out")
+        ilow,ihigh = self.ui.spinBox_FirstGoodFrame.value(), self.ui.spinBox_LastGoodFrame.value()
+        prefix = self.ui.lineEdit_filename.text()
+        filename = "%s_%i_%i.out"%(prefix,ilow,ihigh)
+        opl = OutputList(os.path.join(self.video.folder, filename))
         
         inputdict = {'SEGMENT_METHOD':str(self.ui.comboBox_filterType.currentText())}
         inputdict["HSV_MODEL_RANGE"] = [(self.ui.minHue.value(), self.ui.minSaturation.value(), self.ui.minIntensity.value()), 
@@ -179,9 +183,11 @@ class MainWindow(QtWidgets.QMainWindow):
         inputdict["THRESHOLD"] = self.ui.minIntensity.value()
         
         # Setup output video
+        if self.ui.checkBox_writeVideo.isChecked():
+            self.video.get_writer()
 
         # Process frame
-        for frame_index in range(0,1):
+        for frame_index in range(ilow,ihigh):
             frame = self.video.get_frame(frame_index)
             inputdict["INDEX"] = frame_index
             contour_dict,argdict = self.processor.process(frame, inputdict)
@@ -198,10 +204,16 @@ class MainWindow(QtWidgets.QMainWindow):
             argdict.update(contour_dict)
             opl.append(argdict)
 
+            # Add processed frame to video output
+            if self.ui.checkBox_writeVideo.isChecked():
+                self.video.writer.write(self.frame)
+
         # Write output data
         opl.write()
 
         # close output video
+        if self.ui.checkBox_writeVideo.isChecked():
+            self.video.close_writer()
 
 if __name__ == '__main__':
     import sys
