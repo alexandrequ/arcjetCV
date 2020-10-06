@@ -4,6 +4,7 @@ Author: Magnus Haw, Alexandre Quintart
 Last edited: 11 Sept 2020
 """
 # import base libraries
+import os
 import numpy as np
 import cv2 as cv
 
