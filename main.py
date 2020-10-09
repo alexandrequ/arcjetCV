@@ -7,6 +7,7 @@ Last edited: 11 Sept 2020
 import os
 import numpy as np
 import cv2 as cv
+import pickle
 
 # import some PyQt5 modules
 from gui.arcjetCV_gui import Ui_MainWindow
@@ -52,10 +53,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.processor = None
         self.cnn = None
 
+        # Data structures
+        self.raw_outputs = []
+
         # Connect interface
         self.ui.pushButton_process.clicked.connect(self.process_all)
         self.ui.actionLoad_video.triggered.connect(self.load_video)
         self.ui.label_img.newCursorValue.connect(self.getPixel)
+        self.ui.pushButton_LoadFiles.clicked.connect(self.load_outputs)
+        self.ui.pushButton_PlotData.clicked.connect(self.plot_outputs)
 
         self.show()
 
@@ -188,7 +194,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.video.get_writer()
 
         # Process frame
-        for frame_index in range(ilow,ihigh):
+        for frame_index in range(ilow,ihigh+1):
             frame = self.video.get_frame(frame_index)
             inputdict["INDEX"] = frame_index
             contour_dict,argdict = self.processor.process(frame, inputdict)
@@ -203,7 +209,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.show_img()
 
             argdict.update(contour_dict)
-            opl.append(argdict)
+            opl.append(argdict.copy())
 
             # Add processed frame to video output
             if self.ui.checkBox_writeVideo.isChecked():
@@ -211,10 +217,43 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Write output data
         opl.write()
+        self.raw_outputs = opl
 
         # close output video
         if self.ui.checkBox_writeVideo.isChecked():
             self.video.close_writer()
+
+    def load_outputs(self):
+        # create fileDialog to select file
+        options = QtWidgets.QFileDialog.Options()
+        files, _ = QtWidgets.QFileDialog.getOpenFileNames(self,"Load ouput files", "","Output Files (*.out);;All Files (*)", options=options)
+        self.ui.basebar.setText(str(files))
+
+        # Load all files & concatenate 
+        self.raw_outputs =[]
+        for fname in files:
+            with open(fname,'rb') as file:
+                opl = pickle.load(file)
+                self.raw_outputs.extend(opl)
+        
+    def plot_outputs(self):
+        index = []
+        self.ui.Window1.ax.cla()
+        #self.ui.Window1.ax.set_aspect(1)
+        #self.ui.Window1.ax.set_adjustable('box')
+        n = len(self.raw_outputs)
+
+        for i in range(0,len(self.raw_outputs),int(n/50.)+1):
+            index.append(self.raw_outputs[i]["INDEX"])
+            
+            if self.raw_outputs[i]['MODEL'] is not None:
+                self.ui.Window1.ax.plot(self.raw_outputs[i]['MODEL'][:,0,0],
+                                        self.raw_outputs[i]['MODEL'][:,0,1],'g-',label="model_%i"%index[-1])
+            if self.raw_outputs[i]['SHOCK'] is not None:
+                self.ui.Window1.ax.plot(self.raw_outputs[i]['SHOCK'][:,0,0],
+                                        self.raw_outputs[i]['SHOCK'][:,0,1],'r--',label="shock_%i"%index[-1])
+            self.ui.Window1.ax.figure.tight_layout()
+            self.ui.Window1.ax.figure.canvas.draw()
 
 if __name__ == '__main__':
     import sys

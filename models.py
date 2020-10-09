@@ -252,7 +252,7 @@ class ArcjetProcessor(ImageProcessor):
         frame_crop, argdict = self.preprocess(frame, argdict)
         contour_dict, argdict = self.segment(frame_crop, argdict)
         edges, argdict = self.reduce(contour_dict, argdict)
-        return edges, argdict
+        return edges, argdict.copy()
 
 class Video(object):
     ''' Convenience wrapper for opencv video capture 
