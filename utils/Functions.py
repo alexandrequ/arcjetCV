@@ -77,6 +77,38 @@ def getConvexHull(contour, ninterp, plot=False):
 
     return c.astype(np.int32)
 
+def getPoints(edge, r=[-.75,-.25,0,.25,.75],prefix="MODEL"):
+    """
+    Returns interpolated points at relative vertical positions to center
+       -assumes only front edge is passed into function (not a closed contour)
+       -assumes dense contour, every vertical pixel is occupied 
+
+    :param contour: opencv contour, shape(n,1,n)
+    :param r: list, interpolation points relative to radius
+    :returns: interpolated pixel positions
+    """
+    ### Extract min/max ypos
+    low_ind = c[:,0,1].argmin(); ymin = c[low_ind,0,1]
+    high_ind= c[:,0,1].argmax(); ymax = c[high_ind,0,1]
+    center = int((ymin+ymax)/2)
+    radius = int((ymax-ymin)/2)
+
+    ### Setup output dictionary
+    output = {prefix+'_R':r,prefix+'_YCENTER':center,prefix+'_YLOW':ymin,prefix+'_YMAX':ymax,prefix+'_RADIUS':radius}
+
+    # Interpolate corresponding horizontal positions
+    xpos = np.zeros(len(r))
+    ypos = [int(y*radius+center) for y in r]
+
+    inds = np.arange(low_ind,high_ind)
+    for ind in inds:
+        for j in range(0,len(ypos)):
+            if abs(c[ind,0,1] - ypos[j]) < 3:
+                xpos[j] = c[ind,0,0]
+    output[prefix+'_INTERP_XPOS'] = xpos
+
+    return output.copy()
+
 def getContourAxes(contour):
     """
     Uses priciple component analysis to acquire

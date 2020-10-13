@@ -18,6 +18,7 @@ from PyQt5.QtGui import QImage, QPixmap, QColor
 
 # import analysis functions
 from utils.Calibrate import splitfn
+from utils.Functions import getPoints
 from models import ArcjetProcessor, Video, VideoMeta, OutputList
 from cnn import get_unet_model, cnn_apply
 
@@ -237,15 +238,73 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.raw_outputs.extend(opl)
         
     def plot_outputs(self):
-        index = []
+        
+        # Reset plotting windows
         self.ui.Window1.ax.cla()
         #self.ui.Window1.ax.set_aspect(1)
         #self.ui.Window1.ax.set_adjustable('box')
-        n = len(self.raw_outputs)
 
-        for i in range(0,len(self.raw_outputs),int(n/50.)+1):
+        # Plotting params
+        n = len(self.raw_outputs)
+        index,m75,m25,mc,p25,p75 = [],[],[],[],[],[]
+        time, sarea,marea,sc,sm,ypos = [],[],[],[],[],[]
+        diameter = self.ui.doubleSpinBox_diameter.value()
+        units = self.ui.comboBox_units.currentText()
+        fps = self.ui.doubleSpinBox_fps.value()
+        maskn = self.ui.spinBox_mask_frames.value()
+        
+        for i in range(0,len(self.raw_outputs),maskn):
+            # Save frame index, time
             index.append(self.raw_outputs[i]["INDEX"])
+            time.append(self.raw_outputs[i]["INDEX"]/fps)
+
+            # Model positions (-75%, -25%, center, 25%, 75% radius)
+            if self.raw_outputs[i]['MODEL'] is not None:
+                xpos = self.raw_outputs[i]['INTERP_XPOS']
+                radius = self.raw_outputs[i]['RADIUS']
+                center = self.raw_outputs[i]['YCENTER']
+
+                px_length = diameter/(2*radius)
+
+                m75.append(xpos[0]*px_length)
+                m25.append(xpos[1]*px_length)
+                mc.append(xpos[2]*px_length)
+                p25.append(xpos[3]*px_length)
+                p75.append(xpos[4]*px_length)
+                ypos.append(center*px_length)
+            else:
+                m75.append(None)
+                m25.append(None)
+                mc.append(None)
+                p25.append(None)
+                p75.append(None)
+                ypos.append(None)
             
+            # Shock center x-position
+            if self.raw_outputs[i]['SHOCK'] is not None:
+                sc.append(self.raw_outputs[i]['SHOCK_INTERP_XPOS'][0]*px_length)
+            else:
+                sc.append(None)
+
+            # Shock and model area
+            if self.raw_outputs[i]['SHOCK'] is not None:
+                "SHOCK_AREA"
+                sarea.append()
+            else:
+                sarea.append(None)
+            
+            if self.raw_outputs[i]['MODEL'] is not None:
+                marea.append()
+            else:
+                marea.append(None)
+
+            # Shock-model separation, center
+            if (self.raw_outputs[i]['MODEL'] is not None) and (self.raw_outputs[i]['SHOCK'] is not None):
+                sm.append( abs(sc[-1]-mc[-1]) )
+            else:
+                sm.append(None)                
+            
+            ### Plot XY contours
             if self.raw_outputs[i]['MODEL'] is not None:
                 self.ui.Window1.ax.plot(self.raw_outputs[i]['MODEL'][:,0,0],
                                         self.raw_outputs[i]['MODEL'][:,0,1],'g-',label="model_%i"%index[-1])
@@ -254,6 +313,22 @@ class MainWindow(QtWidgets.QMainWindow):
                                         self.raw_outputs[i]['SHOCK'][:,0,1],'r--',label="shock_%i"%index[-1])
             self.ui.Window1.ax.figure.tight_layout()
             self.ui.Window1.ax.figure.canvas.draw()
+        
+        ### Plot XT series
+        if self.ui.checkBox_m75_radius.isChecked():
+            self.ui.Window2.ax.plot(time, m75, 'mo',label="Model -75%R")
+
+        if self.ui.checkBox_m25_radius.isChecked():
+            self.ui.Window2.ax.plot(time, m25, 'bo',label="Model -25%R")
+
+        if self.ui.checkBox_model_center.isChecked():
+            self.ui.Window2.ax.plot(time, mc, 'go',label="Model center")
+
+        if self.ui.checkBox_25_radius.isChecked():
+            self.ui.Window2.ax.plot(time, p25, 'co',label="Model +25%R")
+
+        if self.ui.checkBox_75_radius.isChecked():
+            self.ui.Window2.ax.plot(time, p75, 'ro',label="Model +75%R")
 
 if __name__ == '__main__':
     import sys

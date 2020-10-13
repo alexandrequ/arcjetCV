@@ -4,7 +4,7 @@ import cv2 as cv
 import numpy as np
 import pickle
 from utils.Functions import splitfn,contoursHSV,contoursGRAY,contoursCNN
-from utils.Functions import getEdgeFromContour,contoursAutoHSV
+from utils.Functions import getEdgeFromContour,contoursAutoHSV, getPoints
 from cnn import get_unet_model, cnn_apply
 
 class ImageProcessor(object):
@@ -241,8 +241,25 @@ class ArcjetProcessor(ImageProcessor):
         edges = {}
         for key in contour_dict.keys():
             c = contour_dict[key]
+
             if c is not None:
+                ### get contour area
+                M = cv.moments(c)
+                argdict[key+"_AREA"] = M["m00"]
+
+                ### get centroid
+                argdict[key+"_CENTROID_X"] = int(M["m10"] / M["m00"])
+                argdict[key+"_CENTROID_Y"] = int(M["m01"] / M["m00"])
+
+                ### get front edge
                 edges[key] = getEdgeFromContour(c,self.FLOW_DIRECTION, offset =(self.CROP[0][0],self.CROP[1][0]) )
+
+                if key == "MODEL":
+                    outputs = getPoints(edges[key], r=[-.75,-.25,0,.25,.75], prefix='MODEL')
+                    argdict.update(outputs)
+                elif key == "SHOCK":
+                    outputs = getPoints(edges[key], r=[0],prefix="SHOCK")
+                    argdict.update(outputs)
             else:
                 edges[key] = None
         return edges, argdict

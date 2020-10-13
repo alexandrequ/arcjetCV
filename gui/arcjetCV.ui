@@ -72,6 +72,26 @@
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_6">
           <item>
+           <widget class="QPushButton" name="pushButton_loadVideo">
+            <property name="text">
+             <string>Load Video</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="verticalSpacer_5">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
            <widget class="QGroupBox" name="groupBox_2">
             <property name="title">
              <string>Input parameters</string>
@@ -491,7 +511,7 @@
       </widget>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
-        <string>Post Process</string>
+        <string>Analyze</string>
        </attribute>
        <layout class="QHBoxLayout" name="horizontalLayout_11">
         <item>
@@ -574,16 +594,16 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_13">
             <item>
-             <widget class="QPushButton" name="pushButton_PlotData">
+             <widget class="QPushButton" name="pushButton_LoadFiles">
               <property name="text">
-               <string>Plot Data</string>
+               <string>Load Files</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="pushButton_LoadFiles">
+             <widget class="QPushButton" name="pushButton_export_csv">
               <property name="text">
-               <string>Load Files</string>
+               <string>Export CSV</string>
               </property>
              </widget>
             </item>
@@ -592,16 +612,16 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_15">
             <item>
-             <widget class="QPushButton" name="pushButton_fitData">
+             <widget class="QPushButton" name="pushButton_PlotData">
               <property name="text">
-               <string>Fit Data</string>
+               <string>Plot Data</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="pushButton_export_csv">
+             <widget class="QPushButton" name="pushButton_fitData">
               <property name="text">
-               <string>Export CSV</string>
+               <string>Fit Data</string>
               </property>
              </widget>
             </item>
@@ -653,6 +673,12 @@
               </item>
               <item row="0" column="1">
                <widget class="QDoubleSpinBox" name="doubleSpinBox_diameter">
+                <property name="minimum">
+                 <double>0.100000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>20.000000000000000</double>
+                </property>
                 <property name="value">
                  <double>4.000000000000000</double>
                 </property>
@@ -684,6 +710,12 @@
               </item>
               <item row="4" column="1">
                <widget class="QDoubleSpinBox" name="doubleSpinBox_fps">
+                <property name="minimum">
+                 <double>1.000000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>120.000000000000000</double>
+                </property>
                 <property name="value">
                  <double>30.000000000000000</double>
                 </property>
@@ -691,6 +723,12 @@
               </item>
               <item row="6" column="1">
                <widget class="QSpinBox" name="spinBox_mask_frames">
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
                 <property name="value">
                  <number>50</number>
                 </property>
@@ -863,16 +901,16 @@
               </widget>
              </item>
              <item row="1" column="1">
-              <widget class="QCheckBox" name="checkBox_model_brightness">
+              <widget class="QCheckBox" name="checkBox_model_area">
                <property name="text">
-                <string>Model brightness</string>
+                <string>Model area</string>
                </property>
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QCheckBox" name="checkBox_shock_brightness">
+              <widget class="QCheckBox" name="checkBox_shock_area">
                <property name="text">
-                <string>Shock brightness</string>
+                <string>Shock area</string>
                </property>
               </widget>
              </item>
