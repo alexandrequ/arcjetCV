@@ -248,8 +248,12 @@ class ArcjetProcessor(ImageProcessor):
                 argdict[key+"_AREA"] = M["m00"]
 
                 ### get centroid
-                argdict[key+"_CENTROID_X"] = int(M["m10"] / M["m00"])
-                argdict[key+"_CENTROID_Y"] = int(M["m01"] / M["m00"])
+                if M["m00"] > 0:
+                    argdict[key+"_CENTROID_X"] = int(M["m10"] / M["m00"])
+                    argdict[key+"_CENTROID_Y"] = int(M["m01"] / M["m00"])
+                else:
+                    argdict[key+"_CENTROID_X"] = np.nan
+                    argdict[key+"_CENTROID_Y"] = np.nan
 
                 ### get front edge
                 edges[key] = getEdgeFromContour(c,self.FLOW_DIRECTION, offset =(self.CROP[0][0],self.CROP[1][0]) )

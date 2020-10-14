@@ -1,13 +1,13 @@
 import numpy as np
 from PyQt5 import QtCore, QtWidgets
-from matplotlib.backends.backend_qt5agg import FigureCanvas, NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
 class TrackLabel(QtWidgets.QLabel):
     newCursorValue = QtCore.pyqtSignal(list)
 
     def mouseMoveEvent(self,event):
-        self.newCursorValue.emit([event.x(), event.y()])
+        self.newCursorValue.emit([event.x(), event.y(),self.width(), self.height()])
 
 class MplCanvas(FigureCanvas):
     """ Convenience class to embed matplotlib canvas
@@ -19,6 +19,9 @@ class MplCanvas(FigureCanvas):
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
         super(MplCanvas, self).__init__(fig)
+        self.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.updateGeometry(self)
+
 
 class MatplotlibWidget(QtWidgets.QWidget):
     """Plotting widget using matplotlib, embedding into Qt
@@ -30,11 +33,12 @@ class MatplotlibWidget(QtWidgets.QWidget):
         super().__init__(*args)
         layout = QtWidgets.QVBoxLayout(self)
 
-        static_canvas = FigureCanvas(Figure(figsize=(5, 3)))
-        toolbar = NavigationToolbar(static_canvas, self)
-        layout.addWidget(toolbar)
-        layout.addWidget(static_canvas)
+        self.canvas = FigureCanvas(Figure(figsize=(5, 3)))
         
-        self.ax = static_canvas.figure.subplots()
+        toolbar = NavigationToolbar(self.canvas, self)
+        layout.addWidget(toolbar)
+        layout.addWidget(self.canvas)
+        
+        self.ax = self.canvas.figure.subplots()
         # t = np.linspace(0, 10, 501)
         # self.ax.plot(t, np.tan(t), ".")

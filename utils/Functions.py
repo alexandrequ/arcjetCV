@@ -3,7 +3,7 @@ import cv2 as cv
 import os
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
-from cnn import cnn_apply
+#from cnn import cnn_apply
 
 
 def splitfn(fn):
@@ -77,13 +77,13 @@ def getConvexHull(contour, ninterp, plot=False):
 
     return c.astype(np.int32)
 
-def getPoints(edge, r=[-.75,-.25,0,.25,.75],prefix="MODEL"):
+def getPoints(c, r=[-.75,-.25,0,.25,.75],prefix="MODEL"):
     """
     Returns interpolated points at relative vertical positions to center
        -assumes only front edge is passed into function (not a closed contour)
        -assumes dense contour, every vertical pixel is occupied 
 
-    :param contour: opencv contour, shape(n,1,n)
+    :param c: opencv contour, shape(n,1,n)
     :param r: list, interpolation points relative to radius
     :returns: interpolated pixel positions
     """
@@ -520,7 +520,7 @@ def smooth(x,window_len=11,window='hanning'):
         w=eval('np.'+window+'(window_len)')
 
     y=np.convolve(w/w.sum(),s,mode='valid')
-    return y[int(window_len/2-1):-int(window_len/2)] 
+    return y[int(window_len/2)-1:-int(window_len/2)-1] 
 
 def convert_mask_BGR_to_gray(img):
     mask = np.zeros(img.shape[0:2],np.uint8)
@@ -573,3 +573,20 @@ def cropBGR(img, CROP):
 
 def cropGRAY(img, CROP):
     return img[CROP[0][0]:CROP[0][1], CROP[1][0]:CROP[1][1]]
+
+def getOutlierMask(metric,threshold=2,method="stdev"):
+    mask = np.zeros_like(metric)
+    if len(metric) > 25:
+        smetric = smooth(metric)
+        diff = abs(smetric - metric)
+
+        if method=="percent":
+            rdiff = abs(diff/(metric + 1e-3))
+            mask += rdiff > threshold
+
+        if method=="stdev":
+            dmean = np.mean(diff)
+            dstd = np.std(diff)
+            mask += diff > dmean + threshold*dstd
+
+    return mask

@@ -6,6 +6,7 @@ Last edited: 11 Sept 2020
 # import base libraries
 import os
 import numpy as np
+import pandas as pd
 import cv2 as cv
 import pickle
 
@@ -18,7 +19,7 @@ from PyQt5.QtGui import QImage, QPixmap, QColor
 
 # import analysis functions
 from utils.Calibrate import splitfn
-from utils.Functions import getPoints
+from utils.Functions import getPoints, getOutlierMask
 from models import ArcjetProcessor, Video, VideoMeta, OutputList
 from cnn import get_unet_model, cnn_apply
 
@@ -56,6 +57,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Data structures
         self.raw_outputs = []
+        self.time_series = None
 
         # Connect interface
         self.ui.pushButton_process.clicked.connect(self.process_all)
@@ -68,10 +70,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @pyqtSlot(list)
     def getPixel(self, inputvals):
-        x,y = inputvals
-        x = min(self.w-1,int(x*self.SCALE_FACTOR))
-        y = min(self.h-1,int(y*self.SCALE_FACTOR))
-        #print(x, y, self.w, self.h)
+        xi,yi, w,h = inputvals
+        #print(inputvals, self.SCALE_FACTOR, self.w, self.h)
+        yi -= int((h - self.h/self.SCALE_FACTOR)/2)
+        yi = max(0,yi)
+        x = min(self.w-1,int(xi*self.SCALE_FACTOR))
+        y = min(self.h-1,int(yi*self.SCALE_FACTOR))
 
         try:
             h,s,v = self.hsv[y,x,:]
@@ -228,7 +232,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # create fileDialog to select file
         options = QtWidgets.QFileDialog.Options()
         files, _ = QtWidgets.QFileDialog.getOpenFileNames(self,"Load ouput files", "","Output Files (*.out);;All Files (*)", options=options)
-        self.ui.basebar.setText(str(files))
+        
+        self.ui.basebar.setText("Loading %i files"%len(files))
 
         # Load all files & concatenate 
         self.raw_outputs =[]
@@ -236,99 +241,211 @@ class MainWindow(QtWidgets.QMainWindow):
             with open(fname,'rb') as file:
                 opl = pickle.load(file)
                 self.raw_outputs.extend(opl)
+
+        fpath, name, ext = splitfn(files[0])
+        # Show summary of loaded data
+        summary = "Loaded %i files\n"%len(files)
+        summary += "Folder: %s\n"%fpath
+        for fname in files:
+            fpath, name, ext = splitfn(fname)
+            summary += "File: %s\n"%name
+        summary += "Total frames: %i\n"%len(self.raw_outputs)
+
+        self.ui.label_data_summary.setText(summary)
+        self.ui.basebar.setText("Finished loading files")
         
     def plot_outputs(self):
+        self.ui.basebar.setText("Plotting data...")
         
         # Reset plotting windows
-        self.ui.Window1.ax.cla()
-        #self.ui.Window1.ax.set_aspect(1)
-        #self.ui.Window1.ax.set_adjustable('box')
+        self.ui.Window1.canvas.figure.clf()
+        self.ui.Window2.canvas.figure.clf()
+
+        ax1 = self.ui.Window1.canvas.figure.subplots()
+        ax2 = self.ui.Window2.canvas.figure.subplots()
 
         # Plotting params
         n = len(self.raw_outputs)
-        index,m75,m25,mc,p25,p75 = [],[],[],[],[],[]
+        index,m75,m25,mc,p25,p75,radius = [],[],[],[],[],[],[]
         time, sarea,marea,sc,sm,ypos = [],[],[],[],[],[]
+
         diameter = self.ui.doubleSpinBox_diameter.value()
         units = self.ui.comboBox_units.currentText()
         fps = self.ui.doubleSpinBox_fps.value()
         maskn = self.ui.spinBox_mask_frames.value()
+
+        if len(self.raw_outputs) > 10:
         
-        for i in range(0,len(self.raw_outputs),maskn):
-            # Save frame index, time
-            index.append(self.raw_outputs[i]["INDEX"])
-            time.append(self.raw_outputs[i]["INDEX"]/fps)
+            for i in range(0,len(self.raw_outputs),maskn):
+                # Save frame index, time
+                index.append(self.raw_outputs[i]["INDEX"])
+                time.append(self.raw_outputs[i]["INDEX"]/fps)
 
-            # Model positions (-75%, -25%, center, 25%, 75% radius)
-            if self.raw_outputs[i]['MODEL'] is not None:
-                xpos = self.raw_outputs[i]['INTERP_XPOS']
-                radius = self.raw_outputs[i]['RADIUS']
-                center = self.raw_outputs[i]['YCENTER']
+                # Model positions (-75%, -25%, center, 25%, 75% radius)
+                if self.raw_outputs[i]['MODEL'] is not None:
+                    xpos = self.raw_outputs[i]['MODEL_INTERP_XPOS']
+                    center = self.raw_outputs[i]['MODEL_YCENTER']
 
-                px_length = diameter/(2*radius)
+                    m75.append(xpos[0])
+                    m25.append(xpos[1])
+                    mc.append(xpos[2])
+                    p25.append(xpos[3])
+                    p75.append(xpos[4])
+                    ypos.append(center)
+                    radius.append(self.raw_outputs[i]['MODEL_RADIUS'])
+                else:
+                    m75.append(np.nan)
+                    m25.append(np.nan)
+                    mc.append(np.nan)
+                    p25.append(np.nan)
+                    p75.append(np.nan)
+                    ypos.append(np.nan)
+                    radius.append(np.nan)
+                
+                # Shock center x-position
+                if self.raw_outputs[i]['SHOCK'] is not None:
+                    sc.append(self.raw_outputs[i]['SHOCK_INTERP_XPOS'][0])
+                else:
+                    sc.append(np.nan)
 
-                m75.append(xpos[0]*px_length)
-                m25.append(xpos[1]*px_length)
-                mc.append(xpos[2]*px_length)
-                p25.append(xpos[3]*px_length)
-                p75.append(xpos[4]*px_length)
-                ypos.append(center*px_length)
-            else:
-                m75.append(None)
-                m25.append(None)
-                mc.append(None)
-                p25.append(None)
-                p75.append(None)
-                ypos.append(None)
+                # Shock and model area
+                if self.raw_outputs[i]['SHOCK'] is not None:
+                    sarea.append(self.raw_outputs[i]['SHOCK_AREA'])
+                else:
+                    sarea.append(np.nan)
+                
+                if self.raw_outputs[i]['MODEL'] is not None:
+                    marea.append(self.raw_outputs[i]['MODEL_AREA'])
+                else:
+                    marea.append(np.nan)
+
+                # Shock-model separation, center
+                if (self.raw_outputs[i]['MODEL'] is not None) and (self.raw_outputs[i]['SHOCK'] is not None):
+                    sm.append( abs(sc[-1]-mc[-1]) )
+                else:
+                    sm.append(np.nan)                
+                
+                ### Plot XY contours
+                if self.raw_outputs[i]['MODEL'] is not None:
+                    ax1.plot(np.array(self.raw_outputs[i]['MODEL'][:,0,0]),
+                                            np.array(self.raw_outputs[i]['MODEL'][:,0,1]),'g-',label="model_%i"%index[-1])
+                if self.raw_outputs[i]['SHOCK'] is not None:
+                    ax1.plot(np.array(self.raw_outputs[i]['SHOCK'][:,0,0]),
+                                            np.array(self.raw_outputs[i]['SHOCK'][:,0,1]),'r--',label="shock_%i"%index[-1])
+                ax1.set_xlabel("X (px)")
+                ax1.set_ylabel("Y (px)")
+                ax1.figure.tight_layout()
+                ax1.figure.canvas.draw()
+
+            ### Mask outliers
+            metrics = [marea,ypos,radius,mc,sc]
+            mask = np.zeros(len(time))
+            for metric in metrics:
+                mask += getOutlierMask(metric)
+
+            ### Infer px length
+            radius_masked = np.ma.masked_where(mask>0,radius)
+            pixel_length = (diameter/(2*radius_masked.max()))
+
+            ### Plot XT series
+            ym75 = np.ma.masked_where(mask > 0, m75)*pixel_length
+            ym25 = np.ma.masked_where(mask > 0, m25)*pixel_length
+            ymc  = np.ma.masked_where(mask > 0, mc)*pixel_length
+            yp25 = np.ma.masked_where(mask > 0, p25)*pixel_length
+            yp75 = np.ma.masked_where(mask > 0, p75)*pixel_length
+            ysarea = np.ma.masked_where(mask > 0, sarea)
+            ymarea = np.ma.masked_where(mask > 0, marea)
+            ysc = np.ma.masked_where(mask > 0, sc)*pixel_length
+            ysm = np.ma.masked_where(mask > 0, sm)*pixel_length
+            yypos = np.ma.masked_where(mask > 0, ypos)*pixel_length
+
+            if self.ui.checkBox_m75_radius.isChecked():
+                ax2.plot(time, ym75, 'mo',label="Model -75%R")
+
+            if self.ui.checkBox_m25_radius.isChecked():
+                ax2.plot(time, ym25, 'bo',label="Model -25%R")
+
+            if self.ui.checkBox_model_center.isChecked():
+                ax2.plot(time, ymc, 'go',label="Model center")
+
+            if self.ui.checkBox_25_radius.isChecked():
+                ax2.plot(time, yp25, 'co',label="Model +25%R")
+
+            if self.ui.checkBox_75_radius.isChecked():
+                ax2.plot(time, yp75, 'ro',label="Model +75%R")
+
+            if self.ui.checkBox_shock_area.isChecked():
+                ax2.plot(time, ysarea, 'y^',label="Shock area (px)")
+
+            if self.ui.checkBox_model_area.isChecked():
+                ax2.plot(time, ymarea, 'yx',label="Model area (px)")
+
+            if self.ui.checkBox_shock_center.isChecked():
+                ax2.plot(time, ysc, 'ks',label="Shock center")
+
+            if self.ui.checkBox_shockmodel.isChecked():
+                ax2.plot(time, ysm, 'r--',label="Shock-model distance")
+
+            if self.ui.checkBox_ypos.isChecked():
+                ax2.plot(time, yypos, 'ks',label="Vertical position")
+
+            ax2.set_xlabel("Time (s)")
+            ax2.set_ylabel("%s"%(self.ui.comboBox_units.currentText()))
+            ax2.figure.tight_layout()
+            legend = ax2.legend()
+            legend.set_draggable(True)
+            #ax2.figure.legend()
+            ax2.figure.canvas.draw()
+
+            # Save to dictionary data structure
+            output_dict = {"TIME [s]":time}
+            unit_text = self.ui.comboBox_units.currentText()
+            length_units = [ym75,ym25,mc,yp25,yp75,ysc,ysm,yypos]
+            length_labels= ["MODEL_-0.75R","MODEL_-0.25R","MODEL_CENTER","MODEL_0.25R","MODEL_0.75R",
+                            "SHOCK_CENTER","SHOCK_TO_MODEL","MODEL_YPOS"]
+            for k in range(0,len(length_units)):
+                output_dict[length_labels[k]+" "+unit_text] = length_units[k]
+
+            px_units = [ymarea,ysarea,radius]
+            px_labels= ["MODEL_AREA [px]", "SHOCK_AREA [px]", "MODEL_RADIUS [px]"]
+            for k in range(0,len(px_units)):
+                output_dict[px_labels[k]] = px_units[k]
+
+            output_dict['CONFIG'] = ['MODEL_DIAMETER: %.2f'%diameter,"FPS: %.2f"%fps, "MASK_NFRAMES: %i"%maskn]
+            self.time_series = output_dict.copy()
+            self.ui.textBrowser.setText(str(self.time_series.keys()))
+
+            # Update ui metrics
+            self.ui.doubleSpinBox_fit_start_time.setMinimum(time[0])
+            self.ui.doubleSpinBox_fit_start_time.setMaximum(time[-1])
+            self.ui.doubleSpinBox_fit_last_time.setMaximum(time[-1])
+            self.ui.doubleSpinBox_fit_last_time.setMinimum(time[0])
             
-            # Shock center x-position
-            if self.raw_outputs[i]['SHOCK'] is not None:
-                sc.append(self.raw_outputs[i]['SHOCK_INTERP_XPOS'][0]*px_length)
+            self.ui.doubleSpinBox_fit_start_time.setValue(time[0])
+            self.ui.doubleSpinBox_fit_last_time.setValue(time[-1])
+
+            # Update data summary with pixel length
+            summary = self.ui.label_data_summary.text()
+            lines = summary.strip().split('\n')
+            if lines[-1][0:5] == "Pixel":
+                lines[-1] = "Pixel length %s: %.4f"%(self.ui.comboBox_units.currentText(), pixel_length)
             else:
-                sc.append(None)
+                lines.append("Pixel length %s: %.4f"%(self.ui.comboBox_units.currentText(), pixel_length))
+            newsummary =''
+            for line in lines:
+                newsummary += line+'\n'
+            self.ui.label_data_summary.setText(newsummary.strip())
 
-            # Shock and model area
-            if self.raw_outputs[i]['SHOCK'] is not None:
-                "SHOCK_AREA"
-                sarea.append()
-            else:
-                sarea.append(None)
-            
-            if self.raw_outputs[i]['MODEL'] is not None:
-                marea.append()
-            else:
-                marea.append(None)
+            # Infobar update
+            self.ui.basebar.setText("Finished plotting data")
+        else:
+            # Infobar update
+            self.ui.basebar.setText("Not enough data to plot")
 
-            # Shock-model separation, center
-            if (self.raw_outputs[i]['MODEL'] is not None) and (self.raw_outputs[i]['SHOCK'] is not None):
-                sm.append( abs(sc[-1]-mc[-1]) )
-            else:
-                sm.append(None)                
-            
-            ### Plot XY contours
-            if self.raw_outputs[i]['MODEL'] is not None:
-                self.ui.Window1.ax.plot(self.raw_outputs[i]['MODEL'][:,0,0],
-                                        self.raw_outputs[i]['MODEL'][:,0,1],'g-',label="model_%i"%index[-1])
-            if self.raw_outputs[i]['SHOCK'] is not None:
-                self.ui.Window1.ax.plot(self.raw_outputs[i]['SHOCK'][:,0,0],
-                                        self.raw_outputs[i]['SHOCK'][:,0,1],'r--',label="shock_%i"%index[-1])
-            self.ui.Window1.ax.figure.tight_layout()
-            self.ui.Window1.ax.figure.canvas.draw()
-        
-        ### Plot XT series
-        if self.ui.checkBox_m75_radius.isChecked():
-            self.ui.Window2.ax.plot(time, m75, 'mo',label="Model -75%R")
-
-        if self.ui.checkBox_m25_radius.isChecked():
-            self.ui.Window2.ax.plot(time, m25, 'bo',label="Model -25%R")
-
-        if self.ui.checkBox_model_center.isChecked():
-            self.ui.Window2.ax.plot(time, mc, 'go',label="Model center")
-
-        if self.ui.checkBox_25_radius.isChecked():
-            self.ui.Window2.ax.plot(time, p25, 'co',label="Model +25%R")
-
-        if self.ui.checkBox_75_radius.isChecked():
-            self.ui.Window2.ax.plot(time, p75, 'ro',label="Model +75%R")
+    def export_to_csv(self):
+        if self.time_series is not None:
+            df = pd.DataFrame(dict([(k,pd.Series(v)) for k,v in self.time_series.items() ]))
+            df.to_csv()
 
 if __name__ == '__main__':
     import sys
