@@ -62,6 +62,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # Connect interface
         self.ui.pushButton_process.clicked.connect(self.process_all)
         self.ui.actionLoad_video.triggered.connect(self.load_video)
+        self.ui.pushButton_loadVideo.clicked.connect(self.load_video)
+        self.ui.pushButton_export_csv.clicked.connect(self.export_to_csv)
+
         self.ui.label_img.newCursorValue.connect(self.getPixel)
         self.ui.pushButton_LoadFiles.clicked.connect(self.load_outputs)
         self.ui.pushButton_PlotData.clicked.connect(self.plot_outputs)
@@ -400,7 +403,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # Save to dictionary data structure
             output_dict = {"TIME [s]":time}
             unit_text = self.ui.comboBox_units.currentText()
-            length_units = [ym75,ym25,mc,yp25,yp75,ysc,ysm,yypos]
+            length_units = [ym75,ym25,ymc,yp25,yp75,ysc,ysm,yypos]
             length_labels= ["MODEL_-0.75R","MODEL_-0.25R","MODEL_CENTER","MODEL_0.25R","MODEL_0.75R",
                             "SHOCK_CENTER","SHOCK_TO_MODEL","MODEL_YPOS"]
             for k in range(0,len(length_units)):
@@ -411,7 +414,7 @@ class MainWindow(QtWidgets.QMainWindow):
             for k in range(0,len(px_units)):
                 output_dict[px_labels[k]] = px_units[k]
 
-            output_dict['CONFIG'] = ['MODEL_DIAMETER: %.2f'%diameter,"FPS: %.2f"%fps, "MASK_NFRAMES: %i"%maskn]
+            output_dict['CONFIG'] = ['UNITS: %s'%unit_text,'MODEL_DIAMETER: %.2f'%diameter,"FPS: %.2f"%fps, "MASK_NFRAMES: %i"%maskn]
             self.time_series = output_dict.copy()
             self.ui.textBrowser.setText(str(self.time_series.keys()))
 
@@ -444,8 +447,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def export_to_csv(self):
         if self.time_series is not None:
+            dialog = QtWidgets.QFileDialog()
+            pathmask = dialog.getSaveFileName(None, "Export CSV","", "CSV files (*.csv)")
+
             df = pd.DataFrame(dict([(k,pd.Series(v)) for k,v in self.time_series.items() ]))
-            df.to_csv()
+            df.to_csv(pathmask[0])
 
 if __name__ == '__main__':
     import sys
