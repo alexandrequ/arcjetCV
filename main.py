@@ -453,6 +453,27 @@ class MainWindow(QtWidgets.QMainWindow):
             df = pd.DataFrame(dict([(k,pd.Series(v)) for k,v in self.time_series.items() ]))
             df.to_csv(pathmask[0])
 
+    def fit_data(self):
+        if self.time_series is not None:
+            time = self.time_series["TIME [s]"]
+            t0 = self.ui.doubleSpinBox_fit_start_time.value()
+            t1 = self.ui.doubleSpinBox_fit_stop_time.value()
+            inds = (time>t0)*(time<t1)
+
+            keys = self.time_series.keys()
+            keys.remove("TIME [s]")
+            keys.remove("CONFIG")
+            for key in keys:
+                t = time[inds]
+                y = self.time_series[key][inds]
+
+                if self.ui.comboBox_fit_type.currentText() == "linear":
+                    pass
+                if self.ui.comboBox_fit_type.currentText() == "quadratic":
+                    pass
+                if self.ui.comboBox_fit_type.currentText() == "exponential":
+                    pass
+
 if __name__ == '__main__':
     import sys
     app = QApplication(sys.argv)
