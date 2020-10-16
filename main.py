@@ -135,6 +135,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # Create video object
             self.video = Video(self.path)
             self.videometa = VideoMeta(os.path.join(self.folder,self.filename+'.meta'))
+            print(self.videometa.path)
             self.videometa.write()
 
             if self.video.w / self.video.h > 731/451:

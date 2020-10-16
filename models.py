@@ -270,9 +270,12 @@ class ArcjetProcessor(ImageProcessor):
 
     def process(self, frame, argdict):
         ''' fully process image '''
-        frame_crop, argdict = self.preprocess(frame, argdict)
-        contour_dict, argdict = self.segment(frame_crop, argdict)
-        edges, argdict = self.reduce(contour_dict, argdict)
+        try: 
+            frame_crop, argdict = self.preprocess(frame, argdict)
+            contour_dict, argdict = self.segment(frame_crop, argdict)
+            edges, argdict = self.reduce(contour_dict, argdict)
+        except:
+            edges = {"MODEL":None,"SHOCK":None}
         return edges, argdict.copy()
 
 class Video(object):
@@ -367,7 +370,7 @@ class VideoMeta(object):
         self.NOTES = None
 
         if os.path.exists(path):
-            self.load()
+            self.load(path)
 
     def __str__(self):
         outstr = "#Property, Value\n"
@@ -383,11 +386,8 @@ class VideoMeta(object):
         fout.write(str(self))
         fout.close()
         
-    def load(self,path=None):
-        if path is None:
-            fin = open(self.path,'r')
-        else:
-            fin = open(path,'r')
+    def load(self,path):
+        fin = open(path,'r')
         print(self.path)
         lines = fin.readlines()
         
@@ -404,6 +404,13 @@ class VideoMeta(object):
                 setattr(self,attrs[0],','.join(attrs[1:]) )
             else:
                 setattr(self,attrs[0],str(attrs[1].strip()) )
+        
+        ### Ensure path vars are correct
+        folder, name, ext = splitfn(path)
+        self.folder = folder
+        self.name = name
+        self.ext = ext
+        self.path = path
 
     def crop_range(self):
         return [[self.YMIN,self.YMAX],[self.XMIN, self.XMAX]]
@@ -417,7 +424,7 @@ class FrameMeta(VideoMeta):
         
         if not os.path.exists(path) and videometa is not None:
             ### load video metadata
-            self.load(path=videometa.path)
+            self.load(videometa.path)
             self.FRAME_INDEX = fnumber
             
             ### restore frame file parameters
