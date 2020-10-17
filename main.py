@@ -61,6 +61,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.raw_outputs = []
         self.time_series = None
         self.PLOTKEYS =[]
+        self.fit_dict = None
 
         # Connect interface
         self.ui.pushButton_process.clicked.connect(self.process_all)
@@ -250,17 +251,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 opl = pickle.load(file)
                 self.raw_outputs.extend(opl)
 
-        fpath, name, ext = splitfn(files[0])
-        # Show summary of loaded data
-        summary = "Loaded %i files\n"%len(files)
-        summary += "Folder: %s\n"%fpath
-        for fname in files:
-            fpath, name, ext = splitfn(fname)
-            summary += "File: %s\n"%name
-        summary += "Total frames: %i\n"%len(self.raw_outputs)
+        if len(files) > 0:
+            fpath, name, ext = splitfn(files[0])
+            # Show summary of loaded data
+            summary = "Loaded %i files\n"%len(files)
+            summary += "Folder: %s\n"%fpath
+            for fname in files:
+                fpath, name, ext = splitfn(fname)
+                summary += "File: %s\n"%name
+            summary += "Total frames: %i\n"%len(self.raw_outputs)
 
-        self.ui.label_data_summary.setText(summary)
-        self.ui.basebar.setText("Finished loading files")
+            self.ui.label_data_summary.setText(summary)
+            self.ui.basebar.setText("Finished loading files")
         
     def plot_outputs(self):
         self.ui.basebar.setText("Plotting data...")
@@ -466,23 +468,36 @@ class MainWindow(QtWidgets.QMainWindow):
             dialog = QtWidgets.QFileDialog()
             pathmask = dialog.getSaveFileName(None, "Export CSV","", "CSV files (*.csv)")
 
+            ### Convert time series into dataframe
             df = pd.DataFrame(dict([(k,pd.Series(v)) for k,v in self.time_series.items() ]))
+
+            ### Convert fits into dataframe
+            if self.fit_dict is not None:
+                df_fit = pd.DataFrame(self.fit_dict)
+                df = df.join(df_fit)
             df.to_csv(pathmask[0])
 
     def fit_data(self):
         if self.time_series is not None:
+            ### Retrieve user inputs for time/units
             units = self.ui.comboBox_units.currentText()
             time = np.array(self.time_series["TIME [s]"])
             t0 = self.ui.doubleSpinBox_fit_start_time.value()
             t1 = self.ui.doubleSpinBox_fit_last_time.value()
             dt = t1-t0
+
+            ### identify relevant indicies
             inds = (time>t0)*(time<t1)
+
+            ### Initialize data structure
             fit_dict = {}
 
+            ### Get list of keys to loop through
             keys = list(self.time_series.keys())
             keys.remove("TIME [s]")
             keys.remove("CONFIG")
             
+            ### Linear fits
             if self.ui.comboBox_fit_type.currentText() == "linear":
                 longstring = ""
                 for key in keys:
@@ -500,6 +515,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         
                 self.ui.textBrowser.setText(longstring)
 
+            ### Quadratic fits
             if self.ui.comboBox_fit_type.currentText() == "quadratic":
                 longstring =""
                 for key in keys:

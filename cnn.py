@@ -1,5 +1,5 @@
 # import opencv
-import cv2 as cv 
+import cv2 as cv
 import numpy as np
 
 # import ML modules
@@ -8,6 +8,8 @@ from keras.layers import Dropout,concatenate,UpSampling2D
 from keras.layers import Conv2D, MaxPooling2D
 from keras_segmentation.train import find_latest_checkpoint
 from keras_segmentation.models.model_utils import get_segmentation_model
+
+from keras.utils import plot_model
 
 def get_unet_model(img, nclasses=3, ckpath = "ML/checkpoints_mosaic/mynet_arcjetCV"):
 
@@ -45,7 +47,7 @@ def get_unet_model(img, nclasses=3, ckpath = "ML/checkpoints_mosaic/mynet_arcjet
     conv5 = Dropout(0.2)(conv5)
     conv5 = Conv2D(32, (3, 3), activation='relu', padding='same')(conv5)
 
-    out = Conv2D( nclasses, (1, 1) , padding='same')(conv5)
+    out = Conv2D(nclasses, (1, 1), padding='same')(conv5)
     ##############################################################################
 
     model = get_segmentation_model(img_input ,  out ) # this would build the segmentation model
@@ -92,9 +94,10 @@ if __name__ == "__main__":
     from models import FrameMeta
     from utils.Functions import convert_mask_gray_to_BGR, cropBGR, cropGRAY
 
-    orig_folder = "/home/magnus/Desktop/NASA/arcjetCV/data/sample_frames/"
-    mask_folder = "/home/magnus/Desktop/NASA/arcjetCV/data/sample_masks/"
-    video_folder= "/home/magnus/Desktop/NASA/arcjetCV/data/video/"
+    arcjetCVFolder = "/home/magnus/Desktop/NASA/arcjetCV/"
+    orig_folder = arcjetCVFolder+"data/sample_frames/"
+    mask_folder = arcjetCVFolder+"data/sample_masks/"
+    video_folder= arcjetCVFolder+"data/video/"
 
     vname = "IHF338Run003_WestView_3"
     vname = "AHF335Run001_EastView_5"
@@ -118,6 +121,7 @@ if __name__ == "__main__":
         mask_crop= cropBGR(maskBGR, crop)
 
         UNet = get_unet_model(img_crop)
+        #plot_model(UNet, to_file=arcjetCVFolder+"model.png", show_shapes=True)
 
         ML_mask = cnn_apply(img_crop,UNet)
         ML_mask = convert_mask_gray_to_BGR(ML_mask)
