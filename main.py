@@ -23,6 +23,8 @@ from utils.Functions import getPoints, getOutlierMask
 from models import ArcjetProcessor, Video, VideoMeta, OutputList
 from cnn import get_unet_model, cnn_apply
 
+import matplotlib.pyplot as plt 
+
 class MainWindow(QtWidgets.QMainWindow):
     # class constructor
     def __init__(self):
@@ -58,12 +60,15 @@ class MainWindow(QtWidgets.QMainWindow):
         # Data structures
         self.raw_outputs = []
         self.time_series = None
+        self.PLOTKEYS =[]
+        self.fit_dict = None
 
         # Connect interface
         self.ui.pushButton_process.clicked.connect(self.process_all)
         self.ui.actionLoad_video.triggered.connect(self.load_video)
         self.ui.pushButton_loadVideo.clicked.connect(self.load_video)
         self.ui.pushButton_export_csv.clicked.connect(self.export_to_csv)
+        self.ui.pushButton_fitData.clicked.connect(self.fit_data)
 
         self.ui.label_img.newCursorValue.connect(self.getPixel)
         self.ui.pushButton_LoadFiles.clicked.connect(self.load_outputs)
@@ -246,17 +251,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 opl = pickle.load(file)
                 self.raw_outputs.extend(opl)
 
-        fpath, name, ext = splitfn(files[0])
-        # Show summary of loaded data
-        summary = "Loaded %i files\n"%len(files)
-        summary += "Folder: %s\n"%fpath
-        for fname in files:
-            fpath, name, ext = splitfn(fname)
-            summary += "File: %s\n"%name
-        summary += "Total frames: %i\n"%len(self.raw_outputs)
+        if len(files) > 0:
+            fpath, name, ext = splitfn(files[0])
+            # Show summary of loaded data
+            summary = "Loaded %i files\n"%len(files)
+            summary += "Folder: %s\n"%fpath
+            for fname in files:
+                fpath, name, ext = splitfn(fname)
+                summary += "File: %s\n"%name
+            summary += "Total frames: %i\n"%len(self.raw_outputs)
 
-        self.ui.label_data_summary.setText(summary)
-        self.ui.basebar.setText("Finished loading files")
+            self.ui.label_data_summary.setText(summary)
+            self.ui.basebar.setText("Finished loading files")
         
     def plot_outputs(self):
         self.ui.basebar.setText("Plotting data...")
@@ -362,36 +368,48 @@ class MainWindow(QtWidgets.QMainWindow):
             ysc = np.ma.masked_where(mask > 0, sc)*pixel_length
             ysm = np.ma.masked_where(mask > 0, sm)*pixel_length
             yypos = np.ma.masked_where(mask > 0, ypos)*pixel_length
+            
+            self.PLOTKEYS =[] 
 
             if self.ui.checkBox_m75_radius.isChecked():
                 ax2.plot(time, ym75, 'mo',label="Model -75%R")
+                self.PLOTKEYS.append("MODEL_-0.75R "+units)
 
             if self.ui.checkBox_m25_radius.isChecked():
                 ax2.plot(time, ym25, 'bo',label="Model -25%R")
+                self.PLOTKEYS.append("MODEL_-0.25R "+units)
 
             if self.ui.checkBox_model_center.isChecked():
                 ax2.plot(time, ymc, 'go',label="Model center")
+                self.PLOTKEYS.append("MODEL_CENTER "+units)
 
             if self.ui.checkBox_25_radius.isChecked():
                 ax2.plot(time, yp25, 'co',label="Model +25%R")
+                self.PLOTKEYS.append("MODEL_0.25R "+units)
 
             if self.ui.checkBox_75_radius.isChecked():
                 ax2.plot(time, yp75, 'ro',label="Model +75%R")
+                self.PLOTKEYS.append("MODEL_0.75R "+units)
 
             if self.ui.checkBox_shock_area.isChecked():
                 ax2.plot(time, ysarea, 'y^',label="Shock area (px)")
+                self.PLOTKEYS.append("SHOCK_AREA [px]")
 
             if self.ui.checkBox_model_area.isChecked():
                 ax2.plot(time, ymarea, 'yx',label="Model area (px)")
+                self.PLOTKEYS.append("MODEL_AREA [px]")
 
             if self.ui.checkBox_shock_center.isChecked():
                 ax2.plot(time, ysc, 'ks',label="Shock center")
+                self.PLOTKEYS.append("SHOCK_CENTER "+units)
 
             if self.ui.checkBox_shockmodel.isChecked():
                 ax2.plot(time, ysm, 'r--',label="Shock-model distance")
+                self.PLOTKEYS.append("SHOCK_TO_MODEL "+units)
 
             if self.ui.checkBox_ypos.isChecked():
                 ax2.plot(time, yypos, 'ks',label="Vertical position")
+                self.PLOTKEYS.append("MODEL_YPOS "+units)
 
             ax2.set_xlabel("Time (s)")
             ax2.set_ylabel("%s"%(self.ui.comboBox_units.currentText()))
@@ -403,21 +421,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # Save to dictionary data structure
             output_dict = {"TIME [s]":time}
-            unit_text = self.ui.comboBox_units.currentText()
             length_units = [ym75,ym25,ymc,yp25,yp75,ysc,ysm,yypos]
             length_labels= ["MODEL_-0.75R","MODEL_-0.25R","MODEL_CENTER","MODEL_0.25R","MODEL_0.75R",
                             "SHOCK_CENTER","SHOCK_TO_MODEL","MODEL_YPOS"]
             for k in range(0,len(length_units)):
-                output_dict[length_labels[k]+" "+unit_text] = length_units[k]
+                output_dict[length_labels[k]+" "+units] = length_units[k]
 
-            px_units = [ymarea,ysarea,radius]
+            px_units = [ymarea,ysarea,radius_masked]
             px_labels= ["MODEL_AREA [px]", "SHOCK_AREA [px]", "MODEL_RADIUS [px]"]
             for k in range(0,len(px_units)):
                 output_dict[px_labels[k]] = px_units[k]
 
-            output_dict['CONFIG'] = ['UNITS: %s'%unit_text,'MODEL_DIAMETER: %.2f'%diameter,"FPS: %.2f"%fps, "MASK_NFRAMES: %i"%maskn]
+            output_dict['CONFIG'] = ['UNITS: %s'%units,'MODEL_DIAMETER: %.2f'%diameter,"FPS: %.2f"%fps, "MASK_NFRAMES: %i"%maskn]
             self.time_series = output_dict.copy()
-            self.ui.textBrowser.setText(str(self.time_series.keys()))
+            #self.ui.textBrowser.setText(str(self.time_series.keys()))
 
             # Update ui metrics
             self.ui.doubleSpinBox_fit_start_time.setMinimum(time[0])
@@ -451,29 +468,72 @@ class MainWindow(QtWidgets.QMainWindow):
             dialog = QtWidgets.QFileDialog()
             pathmask = dialog.getSaveFileName(None, "Export CSV","", "CSV files (*.csv)")
 
+            ### Convert time series into dataframe
             df = pd.DataFrame(dict([(k,pd.Series(v)) for k,v in self.time_series.items() ]))
+
+            ### Convert fits into dataframe
+            if self.fit_dict is not None:
+                df_fit = pd.DataFrame(self.fit_dict)
+                df = df.join(df_fit)
             df.to_csv(pathmask[0])
 
     def fit_data(self):
         if self.time_series is not None:
-            time = self.time_series["TIME [s]"]
+            ### Retrieve user inputs for time/units
+            units = self.ui.comboBox_units.currentText()
+            time = np.array(self.time_series["TIME [s]"])
             t0 = self.ui.doubleSpinBox_fit_start_time.value()
-            t1 = self.ui.doubleSpinBox_fit_stop_time.value()
+            t1 = self.ui.doubleSpinBox_fit_last_time.value()
+            dt = t1-t0
+
+            ### identify relevant indicies
             inds = (time>t0)*(time<t1)
 
-            keys = self.time_series.keys()
+            ### Initialize data structure
+            fit_dict = {}
+
+            ### Get list of keys to loop through
+            keys = list(self.time_series.keys())
             keys.remove("TIME [s]")
             keys.remove("CONFIG")
-            for key in keys:
-                t = time[inds]
-                y = self.time_series[key][inds]
+            
+            ### Linear fits
+            if self.ui.comboBox_fit_type.currentText() == "linear":
+                longstring = ""
+                for key in keys:
+                    t = time[inds]
+                    y = self.time_series[key][inds]
+                    fitp,cov = np.ma.polyfit(t,y,1,cov=True)
+                    err = np.sqrt(np.diag(cov))
+                    m,b = fitp[0],fitp[1]
+                    fit_dict[key+"_LINEAR_FIT"] = (fitp,err)
+                    if key in self.PLOTKEYS:
+                        longstring += key+ "\tMin = %f\t Max = %f\t Delta = %f\n"%(y.min(),y.max(),y.max()-y.min())
+                        longstring += "\tLINEAR FIT: y = mx+b \t"
+                        longstring += "m = %f+-%f %s"%(m,err[0],units+"/s") + "\t"
+                        longstring += "b = %f+-%f %s"%(b,err[1],units) + "\n\n"
+                        
+                self.ui.textBrowser.setText(longstring)
 
-                if self.ui.comboBox_fit_type.currentText() == "linear":
-                    pass
-                if self.ui.comboBox_fit_type.currentText() == "quadratic":
-                    pass
-                if self.ui.comboBox_fit_type.currentText() == "exponential":
-                    pass
+            ### Quadratic fits
+            if self.ui.comboBox_fit_type.currentText() == "quadratic":
+                longstring =""
+                for key in keys:
+                    t = time[inds]
+                    y = self.time_series[key][inds]
+                    fitp,cov = np.polyfit(t,y,2,cov=True)
+                    err = np.sqrt(np.diag(cov))
+                    a,b,c = fitp[0],fitp[1],fitp[2]
+                    fit_dict[key+"_QUADRATIC_FIT"] = (fitp,err)
+                    if key in self.PLOTKEYS:
+                        longstring += key+ "\tMin = %f\t Max = %f\t Delta = %f\n"%(y.min(),y.max(),y.max()-y.min())
+                        longstring += "\tQUAD FIT: y = a*t^2 + b*t + c \n"
+                        longstring += "a = %f+-%f %s"%(a,err[0],units+"/s^2") + "\t"
+                        longstring += "b = %f+-%f %s"%(b,err[1],units+"/s") + "\t"
+                        longstring += "c = %f+-%f %s"%(c,err[2],units) +"\n\n"
+                self.ui.textBrowser.setText(longstring)
+
+            self.fit_dict = fit_dict
 
 if __name__ == '__main__':
     import sys
