@@ -6,27 +6,30 @@ import matplotlib.pyplot as plt
 from glob import glob
 from models import Video, FrameMeta, VideoMeta
 from utils.Functions import splitfn,contoursHSV,contoursGRAY,convert_mask_gray_to_BGR
-from utils.Functions import getEdgeFromContour,convert_mask_BGR_to_gray
+from utils.Functions import getEdgeFromContour,convert_mask_BGR_to_gray, cropBGR, cropGRAY
 from utils.Grabcut import GrabCut
 
 ##fname = "AHF335Run001_EastView_1.mp4"
 ##fname = "IHF360-005_EastView_3_HighSpeed.mp4"
 ##fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 
-VIDEO_FOLDER = "data/video/"
-FRAME_FOLDER = "data/sample_frames/"
-MASK_FOLDER = "data/sample_masks/"
+ARCJETCV = "/home/magnus/Desktop/NASA/arcjetCV/"
+VIDEO_FOLDER = ARCJETCV+"data/video/"
+FRAME_FOLDER = ARCJETCV+"data/sample_frames/"
+MASK_FOLDER = ARCJETCV+"data/sample_masks/"
+MOSAIC_FRAME_FOLDER = ARCJETCV+"data/mosaic_frames/"
+MOSAIC_MASK_FOLDER = ARCJETCV+"data/mosaic_masks/"
 
 filemask = VIDEO_FOLDER + "HyMETS*.mp4"
 videopaths = glob(filemask)
-print(videopaths)
 
 SELECT_FRAMES = False
-MAKE_MASKS = True
+MAKE_MASKS = False
 EDIT_FRAMES = False
-edit_frame_list = [6,9,13,14]
+edit_frame_list = [94]
 ADD_FRAMES = False
 add_frame_list = [1,10,25,50,100,150,200,300]
+GET_MOSAIC = True
 
 #### Select frames per video, create pngs & meta files
 def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], 
@@ -82,7 +85,14 @@ if ADD_FRAMES:
 ########################################################################
 
 def grab_model(frame):
-    ''' use grabcut algorithm to extract model region '''
+    """use grabcut algorithm to extract model region
+
+    Args:
+        frame (opencv image): numpy ndarray
+
+    Returns:
+        modelmask: image mask with maskval =1 for model pixels, 0 for all others
+    """
     outname = 'frame_out.png'
     GrabCut().run(fn=frame.copy(),outname=outname,maskval=1)
     cv.destroyAllWindows()
@@ -106,7 +116,11 @@ def grab_shock(frame,modelmask):
 
     # return collated masks
     shock_mask = cv.imread(outname,1)
-    finalmask = modelmask + shock_mask
+    if shock_mask is not None:
+        finalmask = modelmask + shock_mask
+    else:
+        finalmask = modelmask.copy()
+
     return finalmask
 
 if MAKE_MASKS:
@@ -119,42 +133,71 @@ if MAKE_MASKS:
         flist = range(60,len(fpaths))
     for i in flist:
         # Load sample frame
-        folder, name, ext = splitfn(fpaths[i])
-        frame = cv.imread(fpaths[i],1)
-        
-        fm = FrameMeta(os.path.join(folder,name+'.meta'))
+        framepath = os.path.join(FRAME_FOLDER, "frame_%04d.png"%i)
 
-        # Load mask frame
-        mpath = MASK_FOLDER + name + ext
-        if os.path.exists(mpath):
-            graymask = cv.imread(mpath,0)
-            modelmask = convert_mask_gray_to_BGR(graymask)
-            alpha = .85
-            beta = (1.0 - alpha)
-            dst = cv.addWeighted(frame, alpha, modelmask, beta, 0.0)
-            plt.imshow(dst)
-            plt.show()
+        if framepath in fpaths:
+            frame = cv.imread(framepath,1)
+            folder, name, ext = splitfn(framepath)
+            fm = FrameMeta(os.path.join(folder,name+'.meta'))
 
-            uin = input("Redo mask? (y/n): ")
+            # Load mask frame
+            mpath = MASK_FOLDER + name + ext
+            if os.path.exists(mpath):
+                graymask = cv.imread(mpath,0)
+                modelmask = convert_mask_gray_to_BGR(graymask)
+                alpha = .85
+                beta = (1.0 - alpha)
+                dst = cv.addWeighted(frame, alpha, modelmask, beta, 0.0)
+                plt.imshow(graymask)
+                plt.show()
 
-            if uin == 'y':
-                frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+                uin = input("Redo mask? (y/n): ")
+
+                if uin == 'y':
+                    frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+                    # Extract model first
+                    modelmask =  grab_model(frame)
+                    finalmask = grab_shock(frame,modelmask)
+                
+                    cv.imwrite(mpath,finalmask)
+            else:
                 # Extract model first
                 modelmask =  grab_model(frame)
                 finalmask = grab_shock(frame,modelmask)
             
                 cv.imwrite(mpath,finalmask)
-        else:
-            # Extract model first
-            modelmask =  grab_model(frame)
-            finalmask = grab_shock(frame,modelmask)
-        
-            cv.imwrite(mpath,finalmask)
 
 
+########################################################################
+################ MOSAIC samples & masks to 128x128 #####################
+########################################################################
 
+def get_mosaic_set(framepath, maskpath, frame_outpath, mask_outpath, regex = "*.png"):
+    paths = glob(framepath+regex)
+    for element in paths:
+        folder, name, ext = splitfn(element)
+        frame = cv.imread(element)
+        meta = FrameMeta(os.path.join(folder,name+'.meta'))
+        mask = cv.imread(os.path.join(maskpath,name+ext))
 
+        crop = meta.crop_range()
+        img_crop = cropBGR(frame, crop)
+        mask_crop= cropGRAY(mask, crop)
 
+        height, width = img_crop.shape[0:2]
+        w = 128
+        while (w < width):
+            h = 128
+            while (h < height):
+                cimg = img_crop[h-128:h, w-128:w,:]
+                mimg = mask_crop[h-128:h, w-128:w]
+                cv.imwrite(frame_outpath + str(name) +"_"+ str(w) +"_"+ str(h) + ".png", cimg)
+                cv.imwrite(mask_outpath + str(name) +"_"+ str(w) +"_"+ str(h) + ".png", mimg)
+                h = h + 128
+            w = w + 128
+
+if GET_MOSAIC:
+    get_mosaic_set(FRAME_FOLDER, MASK_FOLDER, MOSAIC_FRAME_FOLDER, MOSAIC_MASK_FOLDER)
 
 
     
