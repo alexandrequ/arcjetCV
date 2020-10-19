@@ -34,6 +34,7 @@ import numpy as np
 import cv2 as cv
 
 import sys
+import matplotlib.pyplot as plt
 
 class GrabCut():
     BLUE = [255,0,0]        # rectangle color
@@ -146,8 +147,13 @@ class GrabCut():
                 self.value = self.DRAW_PR_FG
             elif k == ord('s'): # save image
                 bar = np.zeros((self.img.shape[0], 5, 3), np.uint8)
-                res = np.hstack((self.img2, bar, self.img, bar, self.output))
-                ret,thresh1 = cv.threshold(self.output,1,maskval,cv.THRESH_BINARY)
+                gray = cv.cvtColor(self.output,cv.COLOR_BGR2GRAY)
+                ret,thresh1 = cv.threshold(gray,1,maskval,cv.THRESH_BINARY)
+
+                plt.imshow(self.output)
+                plt.show()
+                plt.imshow(thresh1[:,:])
+                plt.show()
                 cv.imwrite(outname, thresh1)
                 print(" Result saved as image \n")
             elif k == ord('g'):

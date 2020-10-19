@@ -1,6 +1,7 @@
-# import opencv
+# import Python libraries
 import cv2 as cv
 import numpy as np
+from glob import glob
 
 # import ML modules
 from keras.models import Input
@@ -8,11 +9,20 @@ from keras.layers import Dropout,concatenate,UpSampling2D
 from keras.layers import Conv2D, MaxPooling2D
 from keras_segmentation.train import find_latest_checkpoint
 from keras_segmentation.models.model_utils import get_segmentation_model
-
 from keras.utils import plot_model
 
-def get_unet_model(img, nclasses=3, ckpath = "ML/checkpoints_mosaic/mynet_arcjetCV"):
 
+def get_unet_model(img, nclasses=3, ckpath = "ML/checkpoints_mosaic/mynet_arcjetCV"):
+    """Get custom neural net model for model/shock/background segmentation
+
+    Args:
+        img (2D np array): opencv image
+        nclasses (int, optional): Number of classes. Defaults to 3.
+        ckpath (str, optional): Checkpoints path for saving model weights. Defaults to "ML/checkpoints_mosaic/mynet_arcjetCV".
+
+    Returns:
+        model: keras model object
+    """
     cv.imwrite("frame.png", img)
 
     height = img.shape[0]
@@ -52,7 +62,8 @@ def get_unet_model(img, nclasses=3, ckpath = "ML/checkpoints_mosaic/mynet_arcjet
 
     model = get_segmentation_model(img_input ,  out ) # this would build the segmentation model
     latest_weights = find_latest_checkpoint(ckpath)
-    model.load_weights(latest_weights)
+    if latest_weights is not None:
+        model.load_weights(latest_weights)
 
     return model
 
@@ -69,24 +80,19 @@ def cnn_apply(img, model):
 
     return outimg
 
+def train_model(model, frame_folder, mask_folder, epochs= 5, ckpath=None, LOAD=False):
 
-def get_mosaic_set(inpath, outpath, regex = "*.png"):
-    from glob import glob
-    idx = 0
-    paths = glob(inpath+regex)
-    for element in paths:
-        #os.mkdir("dataset/train_masks_mosaic/" + str(element))
-        img = cv.imread(inpath + element)
-        width, height = img.size
-        w = 128
-        while (w < width):
-            h = 128
-            while (h < height):
-                name  = element[:-4]
-                img.crop((w-128, h-128, w, h)).save(outpath + str(name) +"_"+ str(w) +"_"+ str(h) + ".png")
-                h = h + 128
-            w = w + 128
-        idx = idx + 1
+    if LOAD:
+        latest_weights = find_latest_checkpoint(ckpath)
+        model.load_weights(latest_weights)
+
+    model.train( 
+        train_images =  frame_folder,
+        train_annotations = mask_folder,
+        checkpoints_path = ckpath , epochs=epochs,
+        batch_size=2
+    )
+    print('FINISHED TRAINING')
 
 ############################################################################
 if __name__ == "__main__":
@@ -96,49 +102,56 @@ if __name__ == "__main__":
 
     arcjetCVFolder = "/home/magnus/Desktop/NASA/arcjetCV/"
     orig_folder = arcjetCVFolder+"data/sample_frames/"
+    mosaic_frames = arcjetCVFolder+"data/mosaic_frames/"
     mask_folder = arcjetCVFolder+"data/sample_masks/"
+    mosaic_masks = arcjetCVFolder+"data/mosaic_masks/"
     video_folder= arcjetCVFolder+"data/video/"
+    checkpoint_folder = arcjetCVFolder+ "ML/checkpoints/MiniNet_233"
 
-    vname = "IHF338Run003_WestView_3"
-    vname = "AHF335Run001_EastView_5"
-    vname = "IHF338Run002_WestView_1"
-    ext = ".mp4"
+    TRAIN = False
+    CHECK_CNN_MASKS = True
 
-    for n in range(0,80):
-        framepath = orig_folder+"frame_%04d.png"%(n)
-        maskpath = mask_folder+ "frame_%04d.png"%(n)
-        metapath = orig_folder+ "frame_%04d.meta"%(n)
+    files = glob(mosaic_frames + "*.png")
+    img = cv.imread(files[0],1)
 
-        # mask = folder+ name + ext
-        # paths = glob(mask)
-        frame = cv.imread(framepath,1)
-        mask = cv.imread(maskpath,0)
-        maskBGR = convert_mask_gray_to_BGR(mask)
-        meta = FrameMeta(metapath)
+    if TRAIN:
+        model = get_unet_model(img,ckpath=checkpoint_folder)
+        train_model(model, mosaic_frames, mosaic_masks, epochs=5, ckpath=checkpoint_folder)
 
-        crop = meta.crop_range()
-        img_crop = cropBGR(frame, crop)
-        mask_crop= cropBGR(maskBGR, crop)
+    if CHECK_CNN_MASKS:
+        for n in range(183,224):
+            framepath = orig_folder+"frame_%04d.png"%(n)
+            maskpath = mask_folder+ "frame_%04d.png"%(n)
+            metapath = orig_folder+ "frame_%04d.meta"%(n)
 
-        UNet = get_unet_model(img_crop)
-        #plot_model(UNet, to_file=arcjetCVFolder+"model.png", show_shapes=True)
+            frame = cv.imread(framepath,1)
+            mask = cv.imread(maskpath,0)
+            maskBGR = convert_mask_gray_to_BGR(mask)
+            meta = FrameMeta(metapath)
 
-        ML_mask = cnn_apply(img_crop,UNet)
-        ML_mask = convert_mask_gray_to_BGR(ML_mask)
+            crop = meta.crop_range()
+            img_crop = cropBGR(frame, crop)
+            mask_crop= cropBGR(maskBGR, crop)
 
-        alpha = .5
-        beta = (1.0 - alpha)
-        dst = cv.addWeighted(img_crop, alpha, ML_mask, beta, 0.0)
-        plt.subplot(121)
-        plt.title("ML mask")
-        plt.imshow(ML_mask)
+            UNet = get_unet_model(img_crop)
+            #plot_model(UNet, to_file=arcjetCVFolder+"model.png", show_shapes=True)
 
-        dst = cv.addWeighted(img_crop, alpha, mask_crop, beta, 0.0)
-        plt.subplot(122)
-        plt.title("Training mask")
-        plt.imshow(dst)
+            ML_mask = cnn_apply(img_crop,UNet)
+            ML_mask = convert_mask_gray_to_BGR(ML_mask)
 
-        plt.show()
+            alpha = .5
+            beta = (1.0 - alpha)
+            dst = cv.addWeighted(img_crop, alpha, ML_mask, beta, 0.0)
+            plt.subplot(121)
+            plt.title("ML mask")
+            plt.imshow(ML_mask)
+
+            dst = cv.addWeighted(img_crop, alpha, mask_crop, beta, 0.0)
+            plt.subplot(122)
+            plt.title("Training mask")
+            plt.imshow(dst)
+
+            plt.show()
 
 
     
