@@ -11,7 +11,6 @@ from keras_segmentation.train import find_latest_checkpoint
 from keras_segmentation.models.model_utils import get_segmentation_model
 from keras.utils import plot_model
 
-
 def get_unet_model(img, nclasses=3, ckpath = "ML/checkpoints_mosaic/mynet_arcjetCV"):
     """Get custom neural net model for model/shock/background segmentation
 
@@ -98,7 +97,8 @@ def train_model(model, frame_folder, mask_folder, epochs= 5, ckpath=None, LOAD=F
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from models import FrameMeta
-    from utils.Functions import convert_mask_gray_to_BGR, cropBGR, cropGRAY
+    from utils.Functions import convert_mask_gray_to_BGR, cropBGR, cropGRAY,splitfn
+    import os
 
     arcjetCVFolder = "/home/magnus/Desktop/NASA/arcjetCV/"
     orig_folder = arcjetCVFolder+"data/sample_frames/"
@@ -108,21 +108,26 @@ if __name__ == "__main__":
     video_folder= arcjetCVFolder+"data/video/"
     checkpoint_folder = arcjetCVFolder+ "ML/checkpoints/MiniNet_233"
 
-    TRAIN = False
-    CHECK_CNN_MASKS = True
+    TRAIN = True
+    LOAD = False
+    CHECK_CNN_MASKS = False
 
-    files = glob(mosaic_frames + "*.png")
-    img = cv.imread(files[0],1)
-
-    if TRAIN:
+    
+    if LOAD:
+        files = glob(orig_folder + "*.png")
+        img = cv.imread(files[0],1)
         model = get_unet_model(img,ckpath=checkpoint_folder)
-        train_model(model, mosaic_frames, mosaic_masks, epochs=5, ckpath=checkpoint_folder)
+    if TRAIN:
+        files = glob(mosaic_frames + "*.png")
+        img = cv.imread(files[0],1)
+        model = get_unet_model(img,ckpath=checkpoint_folder)
+        train_model(model, mosaic_frames, mosaic_masks, epochs=40, ckpath=checkpoint_folder)
 
     if CHECK_CNN_MASKS:
-        for n in range(183,224):
-            framepath = orig_folder+"frame_%04d.png"%(n)
-            maskpath = mask_folder+ "frame_%04d.png"%(n)
-            metapath = orig_folder+ "frame_%04d.meta"%(n)
+        for framepath in files:
+            folder, name, ext = splitfn(framepath)
+            maskpath = os.path.join(mask_folder, name+ext)
+            metapath = os.path.join(folder,name+".meta")
 
             frame = cv.imread(framepath,1)
             mask = cv.imread(maskpath,0)
@@ -133,10 +138,10 @@ if __name__ == "__main__":
             img_crop = cropBGR(frame, crop)
             mask_crop= cropBGR(maskBGR, crop)
 
-            UNet = get_unet_model(img_crop)
+            model = get_unet_model(img_crop,ckpath=checkpoint_folder)
             #plot_model(UNet, to_file=arcjetCVFolder+"model.png", show_shapes=True)
 
-            ML_mask = cnn_apply(img_crop,UNet)
+            ML_mask = cnn_apply(img_crop,model)
             ML_mask = convert_mask_gray_to_BGR(ML_mask)
 
             alpha = .5

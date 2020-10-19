@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from glob import glob
 from models import Video, FrameMeta, VideoMeta
 from utils.Functions import splitfn,contoursHSV,contoursGRAY,convert_mask_gray_to_BGR
-from utils.Functions import getEdgeFromContour,convert_mask_BGR_to_gray
+from utils.Functions import getEdgeFromContour,convert_mask_BGR_to_gray, cropBGR, cropGRAY
 from utils.Grabcut import GrabCut
 
 ##fname = "AHF335Run001_EastView_1.mp4"
@@ -24,12 +24,12 @@ filemask = VIDEO_FOLDER + "HyMETS*.mp4"
 videopaths = glob(filemask)
 
 SELECT_FRAMES = False
-MAKE_MASKS = True
-EDIT_FRAMES = True
+MAKE_MASKS = False
+EDIT_FRAMES = False
 edit_frame_list = [94]
 ADD_FRAMES = False
 add_frame_list = [1,10,25,50,100,150,200,300]
-GET_MOSAIC = False
+GET_MOSAIC = True
 
 #### Select frames per video, create pngs & meta files
 def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], 
@@ -120,7 +120,7 @@ def grab_shock(frame,modelmask):
         finalmask = modelmask + shock_mask
     else:
         finalmask = modelmask.copy()
-        
+
     return finalmask
 
 if MAKE_MASKS:
@@ -172,31 +172,32 @@ if MAKE_MASKS:
 ################ MOSAIC samples & masks to 128x128 #####################
 ########################################################################
 
-def get_mosaic_set(inpath, outpath, regex = "*.png"):
-    paths = glob(inpath+regex)
+def get_mosaic_set(framepath, maskpath, frame_outpath, mask_outpath, regex = "*.png"):
+    paths = glob(framepath+regex)
     for element in paths:
         folder, name, ext = splitfn(element)
-        img = cv.imread(element)
-        height, width = img.shape[0:2]
-        if len(img.shape) == 3:
-            chan = 3
-        else:
-            chan = 1
+        frame = cv.imread(element)
+        meta = FrameMeta(os.path.join(folder,name+'.meta'))
+        mask = cv.imread(os.path.join(maskpath,name+ext))
+
+        crop = meta.crop_range()
+        img_crop = cropBGR(frame, crop)
+        mask_crop= cropGRAY(mask, crop)
+
+        height, width = img_crop.shape[0:2]
         w = 128
         while (w < width):
             h = 128
             while (h < height):
-                if chan == 3:
-                    cimg = img[h-128:h, w-128:w,:]
-                else:
-                    cimg = img[h-128:h, w-128:w]
-                cv.imwrite(outpath + str(name) +"_"+ str(w) +"_"+ str(h) + ".png", cimg)
+                cimg = img_crop[h-128:h, w-128:w,:]
+                mimg = mask_crop[h-128:h, w-128:w]
+                cv.imwrite(frame_outpath + str(name) +"_"+ str(w) +"_"+ str(h) + ".png", cimg)
+                cv.imwrite(mask_outpath + str(name) +"_"+ str(w) +"_"+ str(h) + ".png", mimg)
                 h = h + 128
             w = w + 128
 
 if GET_MOSAIC:
-    get_mosaic_set(FRAME_FOLDER, MOSAIC_FRAME_FOLDER)
-    get_mosaic_set(MASK_FOLDER, MOSAIC_MASK_FOLDER)
+    get_mosaic_set(FRAME_FOLDER, MASK_FOLDER, MOSAIC_FRAME_FOLDER, MOSAIC_MASK_FOLDER)
 
 
     
