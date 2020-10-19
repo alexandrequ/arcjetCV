@@ -89,7 +89,8 @@ def train_model(model, frame_folder, mask_folder, epochs= 5, ckpath=None, LOAD=F
         train_images =  frame_folder,
         train_annotations = mask_folder,
         checkpoints_path = ckpath , epochs=epochs,
-        batch_size=2
+        batch_size=2,
+        do_augment=True
     )
     print('FINISHED TRAINING')
 
@@ -108,20 +109,20 @@ if __name__ == "__main__":
     video_folder= arcjetCVFolder+"data/video/"
     checkpoint_folder = arcjetCVFolder+ "ML/checkpoints/MiniNet_233"
 
-    TRAIN = True
-    LOAD = False
-    CHECK_CNN_MASKS = False
+    TRAIN = False
+    CHECK_CNN_MASKS = True
 
     
-    if LOAD:
-        files = glob(orig_folder + "*.png")
-        img = cv.imread(files[0],1)
-        model = get_unet_model(img,ckpath=checkpoint_folder)
+    
+
     if TRAIN:
         files = glob(mosaic_frames + "*.png")
         img = cv.imread(files[0],1)
         model = get_unet_model(img,ckpath=checkpoint_folder)
         train_model(model, mosaic_frames, mosaic_masks, epochs=40, ckpath=checkpoint_folder)
+    else:
+        files = glob(orig_folder + "*.png")
+        img = cv.imread(files[0],1)
 
     if CHECK_CNN_MASKS:
         for framepath in files:
