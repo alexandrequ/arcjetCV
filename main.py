@@ -114,6 +114,8 @@ class MainWindow(QtWidgets.QMainWindow):
         inputdict["HSV_SHOCK_RANGE"] = [(self.ui.minHue_2.value(), self.ui.minSaturation_2.value(), self.ui.minIntensity_2.value()), 
                                         (self.ui.maxHue_2.value(), self.ui.maxSaturation_2.value(), self.ui.maxIntensity_2.value())]
         inputdict["THRESHOLD"] = self.ui.minIntensity.value()
+        inputdict["FLOW_DIRECTION"] = self.ui.comboBox_flowDirection.currentText()
+        self.processor.FLOW_DIRECTION = self.ui.comboBox_flowDirection.currentText()
 
         contour_dict,argdict = self.processor.process(frame, inputdict)
 
@@ -187,6 +189,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.maxSaturation_2.valueChanged.connect(self.update_frame_index)
 
             self.ui.comboBox_filterType.currentTextChanged.connect(self.update_frame_index)
+            self.ui.comboBox_flowDirection.currentTextChanged.connect(self.update_frame_index)
             self.update_frame_index()
 
     def process_all(self):

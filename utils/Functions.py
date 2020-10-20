@@ -3,8 +3,7 @@ import cv2 as cv
 import os
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
-#from cnn import cnn_apply
-
+from cnn import cnn_apply
 
 def splitfn(fn):
     fn = os.path.abspath(fn)
@@ -31,9 +30,10 @@ def interpolateContour(contour, ninterp, kind='linear'):
     :returns: output, interpolated contour positions
     """
     x,y= contour[:,0,0],contour[:,0,1]
+
     # identify duplicate points
     okay = np.where(np.abs(np.diff(x)) + np.abs(np.diff(y)) > 0)
-    xp,yp = np.append(x[okay],x[0:1]),np.append(y[okay],y[0:1])
+    xp,yp = x[okay],y[okay]
 
     # find normalized length parameterization
     dl = np.sqrt(np.diff(xp)**2 + np.diff(yp)**2)
@@ -575,6 +575,16 @@ def cropGRAY(img, CROP):
     return img[CROP[0][0]:CROP[0][1], CROP[1][0]:CROP[1][1]]
 
 def getOutlierMask(metric,threshold=2,method="stdev"):
+    """Returns mask for outliers in time series
+
+    Args:
+        metric (array): 1D numpy array, presumably time series
+        threshold (int, optional): Threshold value. Default is 2 for stdev.
+        method (str, optional): "stdev" or "percent". Defaults to "stdev".
+
+    Returns:
+        mask: numpy masked array
+    """
     mask = np.zeros_like(metric)
     if len(metric) > 25:
         smetric = smooth(metric)
@@ -590,3 +600,85 @@ def getOutlierMask(metric,threshold=2,method="stdev"):
             mask += diff > dmean + threshold*dstd
 
     return mask
+
+def cleanEdge(edge, ind=1, ninterp=None):
+    """Return interpolation of edge with non-function points removed
+        Only designed for eliminating adjacent non-function points,
+        ***will not work on contours like closed circles
+
+    Args:
+        edge (array): non-closed opencv contour, numpy ndarray shape->(n,1,n)
+        ninterp (int): number of interpolation points, Defaults to n/10
+        ind (int): 0 or 1 for function of X or function of Y
+
+    Returns:
+        cf: opencv contour array (ni,1,ni)
+    """
+    if ninterp is None:
+        ninterp = int(edge.shape[0]*2)
+    c1 = interpolateContour(edge,ninterp)
+    
+    nx,n,ny = c1.shape
+    x0, y0 = c1[0,0,0], c1[0,0,1]
+    if ind == 1: # Y(X)
+        for i in range(1,nx-1):
+            if c1[i,0,0] == x0:
+                c1[i,0,0] = np.nan
+                c1[i,0,1] = np.nan
+            else:
+                x0 = c1[i,0,0]
+    else: # X(Y)
+        for i in range(1,ny-1):
+            if c1[i,0,1] == y0:
+                c1[i,0,0] = np.nan
+                c1[i,0,1] = np.nan
+            else:
+                y0 = c1[i,0,1]
+
+    x, y = c1[:,0,0], c1[:,0,1]
+    xo, yo = x[~(np.isnan(x))], y[~(np.isnan(x))]
+
+    retc = np.zeros((len(xo),1,2))
+    retc[:,0,0] = xo
+    retc[:,0,1] = yo
+
+    return retc
+
+def getEdgeDifference(edge1, edge2, dim_ind=1,ninterp=100):
+    """ Function to subtract two edges via interpolation to measure shape change
+
+    Args:
+        edge1 (array): opencv contour format, numpy ndarray (n,1,n)
+        edge2 (array): opencv contour format, numpy ndarray (n,1,n)
+        ninterp (int, optional): number of interpolation points.
+    
+    Returns:
+        snew: ndarray of interpolated indep variable
+        vdiff: interpolated differences of dependent variable
+        vi1: interpolated dependent variable of edge1
+        vi2: interpolated dependent variable of edge2
+    """
+    # get interpolatable set of edge points (e.g. single valued function)
+    e1 = cleanEdge(edge1,dim_ind)
+    e2 = cleanEdge(edge2,dim_ind)
+
+    # extract independent variable
+    s1, s2 = e1[:,0,dim_ind], e2[:,0,dim_ind]
+    s1 -= (s1.max()+s1.min())/2
+    s2 -= (s2.max()+s2.min())/2
+    smin = min(s1.min(), s2.min())
+    smax = max(s1.max(), s2.max())
+
+    # extract dependent variable
+    vdim_ind = (dim_ind + 1)%2
+    v1, v2 = e1[:,0,vdim_ind], e2[:,0,vdim_ind]
+
+    # interpolate edges as function of independent variable
+    f1, f2 = interp1d(s1, v1, bounds_error=False), interp1d(s2, v2, bounds_error=False)
+    snew = np.linspace(smin,smax,ninterp)
+    vi1,vi2 = f1(snew), f2(snew)
+    vdiff = vi2-vi1
+
+    return snew, vdiff, vi1,vi2
+ 
+
