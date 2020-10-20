@@ -483,37 +483,66 @@ class OutputList(list):
             super(OutputList,self).append(obj)
 
 if __name__ == '__main__':
-    path = "/home/magnus/Desktop/NASA/arcjetCV/data/video/"
-    fname = "AHF335Run001_EastView_1"
-    #fname = "IHF360-003_EastView_3_HighSpeed"
-    #fname = "IHF338Run006_EastView_1"
-    #fname = "HyMETS-PS03_90"
+    TEST_FUNCTIONS = True
+    BASE_TEST = False
 
-    vm = VideoMeta(path+fname+".meta")
-    video = Video(path+fname+".mp4")
-    print(video)
-    frame = video.get_frame(vm.FIRST_GOOD_FRAME)
+    if TEST_FUNCTIONS:
+        import matplotlib.pyplot as plt
+        from utils.Functions import cleanEdge, getEdgeDifference
+        fname = "/home/magnus/Desktop/NASA/arcjetCV/data/video/HyMETS-PS03_90_2250_6250.out"
+        with open(fname,'rb') as file:
+            opl = pickle.load(file)
+        
+        e1 = opl[0]["MODEL"]
+        e2 = opl[-1]["MODEL"]
+        dl = 0.1233
+        y,diff,v1,v2 = getEdgeDifference(e2*dl,e1*dl,ninterp=1000)
+        fig = plt.figure()
+        plt.subplot(212)
+        plt.plot(y,diff)
+        plt.xlabel("Y (mm)")
+        plt.ylabel("Recession (mm)")
+        plt.subplot(211)
+        plt.plot(y,v2,label="Initial"); plt.plot(y,v1,label="Final")
+        plt.legend(loc=0)
+        plt.xlabel("Y (mm)")
+        plt.ylabel("X (mm)")
+        plt.show()
 
-    # Create OutputList object to store results
-    opl = OutputList("/home/magnus/Desktop/NASA/arcjetCV/test_3070_4070.out")
+    if BASE_TEST:
+        path = "/home/magnus/Desktop/NASA/arcjetCV/data/video/"
+        fname = "AHF335Run001_EastView_1"
+        #fname = "IHF360-003_EastView_3_HighSpeed"
+        #fname = "IHF338Run006_EastView_1"
+        #fname = "HyMETS-PS03_90"
 
-    # Process frame
-    p = ArcjetProcessor(frame,crop_range=vm.crop_range(),flow_direction = vm.FLOW_DIRECTION)
-    contour_dict,argdict = p.process(frame, {'SEGMENT_METHOD':'CNN',"INDEX":vm.FIRST_GOOD_FRAME})
+        vm = VideoMeta(path+fname+".meta")
+        video = Video(path+fname+".mp4")
+        print(video)
+        frame = video.get_frame(vm.FIRST_GOOD_FRAME)
 
-    argdict.update(contour_dict)
-    opl.append(argdict)
-    opl.write()
-    print(argdict.keys(),contour_dict.keys())
+        # Create OutputList object to store results
+        opl = OutputList("/home/magnus/Desktop/NASA/arcjetCV/test_3070_4070.out")
 
-    # Plot edges
-    c = contour_dict['MODEL']
-    import matplotlib.pyplot as plt
-    plt.plot(c[:,0,0],c[:,0,1],'g-')
-    plt.show()
+        # Process frame
+        p = ArcjetProcessor(frame,crop_range=vm.crop_range(),flow_direction = vm.FLOW_DIRECTION)
+        contour_dict,argdict = p.process(frame, {'SEGMENT_METHOD':'CNN',"INDEX":vm.FIRST_GOOD_FRAME})
 
-    # cv.imwrite("test.png",frame)
-    # fm = FrameMeta("test.meta",vm.FIRST_GOOD_FRAME,vm)
-    # fm.write()
-    # print(fm)
-    video.close()
+        argdict.update(contour_dict)
+        opl.append(argdict)
+        opl.write()
+        print(argdict.keys(),contour_dict.keys())
+
+        # Plot edges
+        c = contour_dict['MODEL']
+        import matplotlib.pyplot as plt
+        plt.plot(c[:,0,0],c[:,0,1],'g-')
+        plt.show()
+
+        # cv.imwrite("test.png",frame)
+        # fm = FrameMeta("test.meta",vm.FIRST_GOOD_FRAME,vm)
+        # fm.write()
+        # print(fm)
+        video.close()
+
+    

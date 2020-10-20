@@ -110,10 +110,7 @@ if __name__ == "__main__":
     checkpoint_folder = arcjetCVFolder+ "ML/checkpoints/MiniNet_233"
 
     TRAIN = False
-    CHECK_CNN_MASKS = True
-
-    
-    
+    CHECK_CNN_MASKS = True    
 
     if TRAIN:
         files = glob(mosaic_frames + "*.png")
