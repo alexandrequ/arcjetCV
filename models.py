@@ -489,21 +489,33 @@ if __name__ == '__main__':
     if TEST_FUNCTIONS:
         import matplotlib.pyplot as plt
         from utils.Functions import cleanEdge, getEdgeDifference
-        fname = "/home/magnus/Desktop/NASA/arcjetCV/data/video/HyMETS-PS03_90_2250_6250.out"
-        with open(fname,'rb') as file:
-            opl = pickle.load(file)
+        files = ["/home/magnus/Desktop/NASA/arcjetCV/data/video/HyMETS-PS03_90_1250_1260.out",
+                 "/home/magnus/Desktop/NASA/arcjetCV/data/video/HyMETS-PS03_90_2250_6250.out",
+                 "/home/magnus/Desktop/NASA/arcjetCV/data/video/HyMETS-PS03_90_7000_7123.out"]
+        raw_outputs =[]
+        for fname in files:
+            with open(fname,'rb') as file:
+                opl = pickle.load(file)
+                raw_outputs.extend(opl)
         
-        e1 = opl[0]["MODEL"]
-        e2 = opl[-1]["MODEL"]
-        dl = 0.1233
+        e1 = raw_outputs[0]["MODEL"]
+        em = raw_outputs[11]["MODEL"]
+        e2 = raw_outputs[-1]["MODEL"]
+        dl = 0.0558
         y,diff,v1,v2 = getEdgeDifference(e2*dl,e1*dl,ninterp=1000)
+        ym,diffm,v1m,v2m = getEdgeDifference(e2*dl,em*dl,ninterp=1000)
         fig = plt.figure()
         plt.subplot(212)
-        plt.plot(y,diff)
+        plt.plot(y,diff,label="Differential recession")
+        
         plt.xlabel("Y (mm)")
         plt.ylabel("Recession (mm)")
         plt.subplot(211)
-        plt.plot(y,v2,label="Initial"); plt.plot(y,v1,label="Final")
+
+        plt.plot(y,v2,"--",label="Initial"); 
+
+        plt.plot(y,v2m,label="Mid-point")
+        plt.plot(y,v1,label="Final")
         plt.legend(loc=0)
         plt.xlabel("Y (mm)")
         plt.ylabel("X (mm)")
