@@ -113,10 +113,10 @@ if __name__ == "__main__":
     CHECK_CNN_MASKS = True    
 
     if TRAIN:
-        files = glob(mosaic_frames + "*.png")
+        files = glob(orig_folder + "*.png")
         img = cv.imread(files[0],1)
         model = get_unet_model(img,ckpath=checkpoint_folder)
-        train_model(model, mosaic_frames, mosaic_masks, epochs=40, ckpath=checkpoint_folder)
+        train_model(model, orig_folder, mask_folder, epochs=40, ckpath=checkpoint_folder)
     else:
         files = glob(orig_folder + "*.png")
         img = cv.imread(files[0],1)
