@@ -2,6 +2,7 @@
 import cv2 as cv
 import numpy as np
 from glob import glob
+import os
 
 # import ML modules
 from keras.models import Input
@@ -159,7 +160,7 @@ if __name__ == "__main__":
     import os
     import pickle
 
-    arcjetCVFolder = "/home/magnus/Desktop/NASA/arcjetCV/"
+    arcjetCVFolder = os.getcwd()+"/"
     orig_folder = arcjetCVFolder+"data/sample_frames/"
     mosaic_frames = arcjetCVFolder+"data/mosaic_frames/"
     mask_folder = arcjetCVFolder+"data/sample_masks/"
