@@ -13,7 +13,7 @@ from utils.Grabcut import GrabCut
 ##fname = "IHF360-005_EastView_3_HighSpeed.mp4"
 ##fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 
-ARCJETCV = "/home/magnus/Desktop/NASA/arcjetCV/"
+ARCJETCV = "/content/drive/My Drive/arcjetCV git/arcjetCV/"
 VIDEO_FOLDER = ARCJETCV+"data/video/"
 FRAME_FOLDER = ARCJETCV+"data/sample_frames/"
 MASK_FOLDER = ARCJETCV+"data/sample_masks/"
@@ -23,14 +23,13 @@ MOSAIC_MASK_FOLDER = ARCJETCV+"data/mosaic_masks/"
 filemask = VIDEO_FOLDER + "HyMETS*.mp4"
 videopaths = glob(filemask)
 
-SELECT_FRAMES = False
+SELECT_FRAMES = True
 MAKE_MASKS = True
 EDIT_FRAMES = True
-edit_frame_list = [100,101,102,103]
-ADD_FRAMES = False
+edit_frame_list = [94]
+ADD_FRAMES = True
 add_frame_list = [1,10,25,50,100,150,200,300]
 GET_MOSAIC = True
-SPLIT = True
 
 #### Select frames per video, create pngs & meta files
 def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], 
@@ -97,7 +96,7 @@ def grab_model(frame):
     outname = 'frame_out.png'
     GrabCut().run(fn=frame.copy(),outname=outname,maskval=1)
     cv.destroyAllWindows()
-    modelmask = cv.imread(outname,0)
+    modelmask = cv.imread(outname,1)
     return modelmask
 
 def grab_shock(frame,modelmask):
@@ -116,7 +115,7 @@ def grab_shock(frame,modelmask):
     cv.destroyAllWindows()
 
     # return collated masks
-    shock_mask = cv.imread(outname,0)
+    shock_mask = cv.imread(outname,1)
     if shock_mask is not None:
         finalmask = modelmask + shock_mask
     else:
@@ -131,7 +130,7 @@ if MAKE_MASKS:
     if EDIT_FRAMES:
         flist = edit_frame_list
     else:
-        flist = range(0,len(fpaths))
+        flist = range(60,len(fpaths))
     for i in flist:
         # Load sample frame
         framepath = os.path.join(FRAME_FOLDER, "frame_%04d.png"%i)
@@ -145,27 +144,26 @@ if MAKE_MASKS:
             mpath = MASK_FOLDER + name + ext
             if os.path.exists(mpath):
                 graymask = cv.imread(mpath,0)
-                
                 modelmask = convert_mask_gray_to_BGR(graymask)
                 alpha = .85
                 beta = (1.0 - alpha)
                 dst = cv.addWeighted(frame, alpha, modelmask, beta, 0.0)
-                plt.imshow(modelmask)
-                plt.show()
+                plt.imshow(graymask)
+                #plt.show()
 
-                uin = input("Redo mask? (y/n): ")
+                uin = 'n' #input("Redo mask? (y/n): ")
 
                 if uin == 'y':
-                    # frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+                    frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
                     # Extract model first
-                    graymask =  grab_model(frame)
-                    finalmask = grab_shock(frame,graymask)
+                    modelmask =  grab_model(frame)
+                    finalmask = grab_shock(frame,modelmask)
                 
                     cv.imwrite(mpath,finalmask)
             else:
                 # Extract model first
-                graymask =  grab_model(frame)
-                finalmask = grab_shock(frame,graymask)
+                modelmask =  grab_model(frame)
+                finalmask = grab_shock(frame,modelmask)
             
                 cv.imwrite(mpath,finalmask)
 
@@ -174,7 +172,7 @@ if MAKE_MASKS:
 ################ MOSAIC samples & masks to 128x128 #####################
 ########################################################################
 
-def get_mosaic_set(framepath, maskpath, frame_outpath, mask_outpath, regex = "*.png", npx=128):
+def get_mosaic_set(framepath, maskpath, frame_outpath, mask_outpath, regex = "*.png"):
     paths = glob(framepath+regex)
     for element in paths:
         folder, name, ext = splitfn(element)
@@ -183,68 +181,24 @@ def get_mosaic_set(framepath, maskpath, frame_outpath, mask_outpath, regex = "*.
         mask = cv.imread(os.path.join(maskpath,name+ext))
 
         crop = meta.crop_range()
-
-        if crop[1][1]-crop[1][0] < npx:
-            crop[1][1] = crop[1][0] + npx
-
         img_crop = cropBGR(frame, crop)
         mask_crop= cropGRAY(mask, crop)
 
         height, width = img_crop.shape[0:2]
-        w = npx; h = npx
-        nx,ny = int(width/w)+1,int(height/h)+1
-
-        for i in range(0,nx):
-            
-            if i == nx-1:
-                w = width
-
-            for j in range(0,ny):
-                if j== ny-1:
-                    h = height
-                cimg = img_crop[h-npx:h, w-npx:w,:]
-                mimg = mask_crop[h-npx:h, w-npx:w]
-                #cimg = cv.cvtColor(cimg,cv.COLOR_BGR2HSV)
+        w = 128
+        while (w < width):
+            h = 128
+            while (h < height):
+                cimg = img_crop[h-128:h, w-128:w,:]
+                mimg = mask_crop[h-128:h, w-128:w]
                 cv.imwrite(frame_outpath + str(name) +"_"+ str(w) +"_"+ str(h) + ".png", cimg)
                 cv.imwrite(mask_outpath + str(name) +"_"+ str(w) +"_"+ str(h) + ".png", mimg)
-                h = h + npx
-            h = npx
-            w = w + npx
-
-def mkdir(newpath):
-    if not os.path.exists(newpath):
-        os.makedirs(newpath)
-
-def split_train_validation_test(train_fraction, valid_fraction, source_folder):
-    assert train_fraction + valid_fraction < 1
-    files = glob(os.path.join(source_folder,"*.png"))
-    n = len(files)
-    print(n)
-    mkdir(os.path.join(source_folder,"train"))
-    mkdir(os.path.join(source_folder,"validate"))
-    mkdir(os.path.join(source_folder,"test"))
-    
-    ni = int(train_fraction*n)
-    nj = int(valid_fraction*n)
-    for i in range(0,ni):
-        path = files[i]
-        folder, name, ext = splitfn(path)
-        os.rename(path, os.path.join(source_folder,"train/",name+ext))
-    for j in range(ni,nj+ni):
-        path = files[j]
-        folder, name, ext = splitfn(path)
-        os.rename(path, os.path.join(source_folder,"validate/",name+ext))
-    for k in range(nj+ni,n):
-        path = files[k]
-        folder, name, ext = splitfn(path)
-        os.rename(path, os.path.join(source_folder,"test/",name+ext))
-
+                h = h + 128
+            w = w + 128
 
 if GET_MOSAIC:
-    get_mosaic_set(FRAME_FOLDER, MASK_FOLDER, MOSAIC_FRAME_FOLDER, MOSAIC_MASK_FOLDER, npx=128)
+    get_mosaic_set(FRAME_FOLDER, MASK_FOLDER, MOSAIC_FRAME_FOLDER, MOSAIC_MASK_FOLDER)
 
-if SPLIT:
-    split_train_validation_test(.75,.2, "/home/magnus/Desktop/NASA/arcjetCV/data/mosaic_frames")
-    split_train_validation_test(.75,.2, "/home/magnus/Desktop/NASA/arcjetCV/data/mosaic_masks")
+
     
 
