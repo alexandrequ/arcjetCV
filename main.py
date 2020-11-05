@@ -465,6 +465,11 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             # Infobar update
             self.ui.basebar.setText("Not enough data to plot")
+        
+        # self.ui.Window1.update()
+        self.ui.Window1.repaint()
+        # self.ui.Window2.update()
+        self.ui.Window2.repaint()
 
     def export_to_csv(self):
         if self.time_series is not None:
@@ -517,6 +522,8 @@ class MainWindow(QtWidgets.QMainWindow):
                         longstring += "b = %f+-%f %s"%(b,err[1],units) + "\n\n"
                         
                 self.ui.textBrowser.setText(longstring)
+                # self.ui.textBrowser.update()
+                self.ui.textBrowser.repaint()
 
             ### Quadratic fits
             if self.ui.comboBox_fit_type.currentText() == "quadratic":
@@ -535,6 +542,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         longstring += "b = %f+-%f %s"%(b,err[1],units+"/s") + "\t"
                         longstring += "c = %f+-%f %s"%(c,err[2],units) +"\n\n"
                 self.ui.textBrowser.setText(longstring)
+                self.ui.textBrowser.repaint()
 
             self.fit_dict = fit_dict
 
