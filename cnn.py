@@ -86,7 +86,7 @@ def train_model(model, frame_folder, mask_folder, epochs= 5, ckpath=None, LOAD=F
         latest_weights = find_latest_checkpoint(ckpath)
         model.load_weights(latest_weights)
 
-    model.train( 
+    model.train(
         train_images =  frame_folder,
         train_annotations = mask_folder,
         checkpoints_path = ckpath , epochs=epochs,
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     checkpoint_folder = arcjetCVFolder+ "ML/checkpoints/MiniNet_233"
 
     TRAIN = False
-    CHECK_CNN_MASKS = False    
+    CHECK_CNN_MASKS = True  
 
     if TRAIN:
         files = glob(orig_folder + "*.png")
@@ -157,7 +157,3 @@ if __name__ == "__main__":
             plt.imshow(dst)
 
             plt.show()
-
-
-    
-    

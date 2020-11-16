@@ -108,7 +108,7 @@ class GrabCut():
                 print("No input image given, so loading default image, lena.jpg \n")
                 print("Correct Usage: python grabcut.py <filename> \n")
                 filename = 'lena.jpg'
-            #self.img = cv.imread(cv.samples.findFile(filename))
+            self.img = cv.imread(cv.samples.findFile(filename))
         else:
             filename = 'none'
             self.img = fn
