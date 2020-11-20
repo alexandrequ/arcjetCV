@@ -259,10 +259,10 @@ class ArcjetProcessor(ImageProcessor):
                 edges[key] = getEdgeFromContour(c,self.FLOW_DIRECTION, offset =(self.CROP[0][0],self.CROP[1][0]) )
 
                 if key == "MODEL":
-                    outputs = getPoints(edges[key], r=[-.75,-.25,0,.25,.75], prefix='MODEL')
+                    outputs = getPoints(edges[key], flow_direction= self.FLOW_DIRECTION, r=[-.75,-.25,0,.25,.75], prefix='MODEL')
                     argdict.update(outputs)
                 elif key == "SHOCK":
-                    outputs = getPoints(edges[key], r=[0],prefix="SHOCK")
+                    outputs = getPoints(edges[key], flow_direction= self.FLOW_DIRECTION, r=[0],prefix="SHOCK")
                     argdict.update(outputs)
             else:
                 edges[key] = None
