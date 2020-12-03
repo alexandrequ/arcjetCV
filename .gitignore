@@ -27,7 +27,6 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-data/
 dataset/
 
 # PyInstaller
@@ -135,4 +134,4 @@ dmypy.json
 *.mp4
 train_frames/
 train_masks/
-.vscode/settings.json
+settings.json

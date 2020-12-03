@@ -77,7 +77,7 @@ def getConvexHull(contour, ninterp, plot=False):
 
     return c.astype(np.int32)
 
-def getPoints(c, r=[-.75,-.25,0,.25,.75],prefix="MODEL"):
+def getPoints(c, flow_direction="right", r=[-.75,-.25,0,.25,.75],prefix="MODEL"):
     """
     Returns interpolated points at relative vertical positions to center
        -assumes only front edge is passed into function (not a closed contour)
@@ -100,7 +100,9 @@ def getPoints(c, r=[-.75,-.25,0,.25,.75],prefix="MODEL"):
     xpos = np.zeros(len(r))
     ypos = [int(y*radius+center) for y in r]
 
-    inds = np.arange(low_ind,high_ind)
+    li = min(low_ind,high_ind)
+    hi = max(low_ind,high_ind)
+    inds = np.arange(li,hi)
     for ind in inds:
         for j in range(0,len(ypos)):
             if abs(c[ind,0,1] - ypos[j]) < 3:
@@ -681,4 +683,3 @@ def getEdgeDifference(edge1, edge2, dim_ind=1,ninterp=100):
 
     return snew, vdiff, vi1,vi2
  
-

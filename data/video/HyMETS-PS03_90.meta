@@ -1,8 +1,8 @@
 #Property, Value
-folder, /home/magnus/Desktop/NASA/arcjetCV/data/video
+folder, /Users/mhaw/Desktop/arcjetCV/data/video
 name, HyMETS-PS03_90
 ext, .meta
-path, /home/magnus/Desktop/NASA/arcjetCV/data/video/HyMETS-PS03_90.meta
+path, /Users/mhaw/Desktop/arcjetCV/data/video/HyMETS-PS03_90.meta
 WIDTH, 904
 HEIGHT, 960
 CHANNELS, 3

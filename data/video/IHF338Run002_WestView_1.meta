@@ -1,8 +1,8 @@
 #Property, Value
-folder, /home/magnus/Desktop/NASA/arcjetCV/data/video
+folder, /Users/mhaw/Desktop/arcjetCV/data/video
 name, IHF338Run002_WestView_1
 ext, .meta
-path, /home/magnus/Desktop/NASA/arcjetCV/data/video/IHF338Run002_WestView_1.meta
+path, /Users/mhaw/Desktop/arcjetCV/data/video/IHF338Run002_WestView_1.meta
 WIDTH, 1286
 HEIGHT, 720
 CHANNELS, 3
