@@ -59,7 +59,7 @@ class GrabCut():
 
     def onmouse(self, event, x, y, flags, param):
         # Draw Rectangle
-        if event == cv.EVENT_MBUTTONDOWN:
+        if event == cv.EVENT_RBUTTONDOWN:
             self.rectangle = True
             self.ix, self.iy = x,y
 
@@ -70,7 +70,7 @@ class GrabCut():
                 self.rect = (min(self.ix, x), min(self.iy, y), abs(self.ix - x), abs(self.iy - y))
                 self.rect_or_mask = 0
 
-        elif event == cv.EVENT_MBUTTONUP:
+        elif event == cv.EVENT_RBUTTONUP:
             self.rectangle = False
             self.rect_over = True
             cv.rectangle(self.img, (self.ix, self.iy), (x, y), self.BLUE, 2)
@@ -124,7 +124,7 @@ class GrabCut():
         cv.moveWindow('input', self.img.shape[1]+10,90)
 
         print(" Instructions: \n")
-        print(" Draw a rectangle around the object using middle mouse button \n")
+        print(" Draw a rectangle around the object using right mouse button \n")
 
         while(1):
 

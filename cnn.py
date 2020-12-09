@@ -10,6 +10,7 @@ from keras.layers import Dropout,concatenate,UpSampling2D
 from keras.layers import Conv2D, MaxPooling2D
 from keras_segmentation.train import find_latest_checkpoint
 from keras_segmentation.models.model_utils import get_segmentation_model
+from keras_segmentation.models.unet import vgg_unet
 from keras.utils import plot_model
 
 def get_unet_model(img, nclasses=3, ckpath = "ML/checkpoints_mosaic/mynet_arcjetCV"):
@@ -27,8 +28,8 @@ def get_unet_model(img, nclasses=3, ckpath = "ML/checkpoints_mosaic/mynet_arcjet
 
     height = img.shape[0]
     width= img.shape[1]
-    hpx = height- height%4
-    wpx = width- width%4
+    hpx = height- height%32#4
+    wpx = width- width%32#4
 
     ##############################################################################
     img_input = Input(shape=(hpx,wpx , nclasses))
@@ -60,10 +61,11 @@ def get_unet_model(img, nclasses=3, ckpath = "ML/checkpoints_mosaic/mynet_arcjet
     out = Conv2D(nclasses, (1, 1), padding='same')(conv5)
     ##############################################################################
 
-    model = get_segmentation_model(img_input ,  out ) # this would build the segmentation model
-    latest_weights = find_latest_checkpoint(ckpath)
-    if latest_weights is not None:
-        model.load_weights(latest_weights)
+    #model = get_segmentation_model(img_input ,  out ) # this would build the segmentation model
+    model = vgg_unet(n_classes=51 ,  input_height=hpx, input_width=wpx  )
+    # latest_weights = find_latest_checkpoint(ckpath)
+    # if latest_weights is not None:
+    #     model.load_weights(latest_weights)
 
     return model
 
@@ -110,8 +112,8 @@ if __name__ == "__main__":
     video_folder= arcjetCVFolder+"data/video/"
     checkpoint_folder = arcjetCVFolder+ "ML/checkpoints/MiniNet_233"
 
-    TRAIN = False
-    CHECK_CNN_MASKS = True  
+    TRAIN = True
+    CHECK_CNN_MASKS = True
 
     if TRAIN:
         files = glob(orig_folder + "*.png")

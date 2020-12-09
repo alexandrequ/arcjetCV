@@ -1,4 +1,4 @@
-# Make training set for convolutional neural net 
+# Make training set for convolutional neural net
 import numpy as np
 import cv2 as cv
 import os
@@ -13,35 +13,35 @@ from utils.Grabcut import GrabCut
 ##fname = "IHF360-005_EastView_3_HighSpeed.mp4"
 ##fname = "IHF360-003_EastView_3_HighSpeed.mp4"
 
-ARCJETCV = "/content/drive/My Drive/arcjetCV git/arcjetCV/"
-VIDEO_FOLDER = ARCJETCV+"data/video/"
-FRAME_FOLDER = ARCJETCV+"data/sample_frames/"
-MASK_FOLDER = ARCJETCV+"data/sample_masks/"
-MOSAIC_FRAME_FOLDER = ARCJETCV+"data/mosaic_frames/"
-MOSAIC_MASK_FOLDER = ARCJETCV+"data/mosaic_masks/"
+ARCJETCV = os.getcwd() + '/'
+VIDEO_FOLDER = ARCJETCV+"data2/video/"
+FRAME_FOLDER = ARCJETCV+"data2/sample_frames/"
+MASK_FOLDER = ARCJETCV+"data2/sample_masks/"
+MOSAIC_FRAME_FOLDER = ARCJETCV+"data2/mosaic_frames/"
+MOSAIC_MASK_FOLDER = ARCJETCV+"data2/mosaic_masks/"
 
-filemask = VIDEO_FOLDER + "HyMETS*.mp4"
+filemask = VIDEO_FOLDER + "HyMETS-PS12_90.mp4"
 videopaths = glob(filemask)
 
-SELECT_FRAMES = True
+SELECT_FRAMES = False
 MAKE_MASKS = True
-EDIT_FRAMES = True
+EDIT_FRAMES = False
 edit_frame_list = [94]
-ADD_FRAMES = True
+ADD_FRAMES = False
 add_frame_list = [1,10,25,50,100,150,200,300]
-GET_MOSAIC = True
+GET_MOSAIC = False
 
 #### Select frames per video, create pngs & meta files
-def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[], 
+def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[],
                   nframes=8, COUNTER = 0, offset=0):
     ''' selects frames from videos and creates metadata files for each one'''
     for path in videopaths:
         folder, name, ext = splitfn(path)
         fname = name+ext;print("### "+ name)
-        
+
         vmeta = VideoMeta(os.path.join(folder,name+'.meta'))
         vid = Video(path)
-        
+
         for fnumber in np.linspace(vmeta.FIRST_GOOD_FRAME, vmeta.LAST_GOOD_FRAME, nframes):
             # Capture frame-by-frame
 
@@ -54,9 +54,9 @@ def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[],
             fmeta = FrameMeta(metapath,int(fnumber),vmeta)
             fmeta.VIDEO = vmeta.path
             fmeta.write()
-            
+
             COUNTER += 1
-        
+
         for fnumber in addframes:
             fnumber += vmeta.FIRST_GOOD_FRAME
             # Capture frame-by-frame
@@ -68,7 +68,7 @@ def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[],
             metapath = fd+fname+'.meta'
             fmeta = FrameMeta(metapath,int(fnumber),vmeta)
             fmeta.write()
-            
+
             COUNTER += 1
 
         # When everything done, release the capture
@@ -77,6 +77,7 @@ def select_frames(videopaths, fd =FRAME_FOLDER, addframes=[],
 existing_frames = glob(FRAME_FOLDER+"*.png")
 if SELECT_FRAMES:
     select_frames(videopaths,nframes=16,COUNTER=len(existing_frames), addframes=add_frame_list)
+    print("select frames")
 if ADD_FRAMES:
     select_frames(videopaths, nframes=0,COUNTER=len(existing_frames), addframes=add_frame_list)
 
@@ -126,16 +127,17 @@ def grab_shock(frame,modelmask):
 if MAKE_MASKS:
     ### Load existing images
     fpaths = sorted(glob(FRAME_FOLDER+ "*.png"))
-
     if EDIT_FRAMES:
         flist = edit_frame_list
     else:
-        flist = range(60,len(fpaths))
+        flist = range(0,len(fpaths))
+        print(flist)
     for i in flist:
         # Load sample frame
         framepath = os.path.join(FRAME_FOLDER, "frame_%04d.png"%i)
 
         if framepath in fpaths:
+            print(framepath)
             frame = cv.imread(framepath,1)
             folder, name, ext = splitfn(framepath)
             fm = FrameMeta(os.path.join(folder,name+'.meta'))
@@ -158,13 +160,13 @@ if MAKE_MASKS:
                     # Extract model first
                     modelmask =  grab_model(frame)
                     finalmask = grab_shock(frame,modelmask)
-                
+
                     cv.imwrite(mpath,finalmask)
             else:
                 # Extract model first
                 modelmask =  grab_model(frame)
                 finalmask = grab_shock(frame,modelmask)
-            
+
                 cv.imwrite(mpath,finalmask)
 
 
@@ -198,7 +200,3 @@ def get_mosaic_set(framepath, maskpath, frame_outpath, mask_outpath, regex = "*.
 
 if GET_MOSAIC:
     get_mosaic_set(FRAME_FOLDER, MASK_FOLDER, MOSAIC_FRAME_FOLDER, MOSAIC_MASK_FOLDER)
-
-
-    
-
